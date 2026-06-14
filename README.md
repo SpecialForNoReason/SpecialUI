@@ -19,13 +19,13 @@ with the pain in the ass of making a custom UI, providing a Decent Minimalist AP
 ## Tutorial
 ---
 
-# First: getting the loadstring
+# 1: getting the loadstring
 ```
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/SpecialForNoReason/SpecialUI/refs/heads/main/SpecialUI.lua"))()
 ```
 ---
 
-# Second: Creating UI library Window
+# 2: Creating UI library Window
 ```
 local Window = Library.CreateLib("Example", "Lavender")
 ```
@@ -51,26 +51,26 @@ all of the themes:
 
 ---
 
-# Third: Creating Tabs
+# 3: Creating Tabs
 ```
 local Tab = Window:NewTab("ExampleTab")
 ```
 
 ---
 
-# Fourth: Creating Sections
+# 4: Creating Sections
 ```
 local Section = Tab:NewSection("ExampleSection")
 ```
 ---
 
-# Fifth: Creating Labels
+# 5: Creating Labels
 ```
 Section:NewLabel("ExampleLabel")
 ```
 ---
 
-# Sixth: Creating Buttons
+# 6: Creating Buttons
 ```
 Section:NewButton("ExampleTextButton", "ButtonInfo", function()
     print("Clicked")
@@ -85,7 +85,7 @@ button:UpdateButton("New Text")
 
 ---
 
-# Seventh: Creating Toggles
+# 7: Creating Toggles
 ```
 Section:NewToggle("ToggleText", "ToggleInfo", function(state)
     if state then
