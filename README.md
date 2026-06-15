@@ -2,13 +2,16 @@
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2)](https://discord.gg/yvGpvEAVrn)
 
 
+## SpecialUI v0.1-Preview1
+
+
 ## important notice
 ---
 
 **SpecialUI Library is a fork of Kavo UI, which was made by xHeptc.**
 SpecialUI Fixed Memory leaks and changed the API (From Kavo to SpecialUI)
-currently, its in version Beta, so it might be unstable, therefore, we suggest staying to Kavo
-until tested.
+currently, its in version Beta, so it might be unstable, therefore, if you find any bugs, report 
+them to our discord server.
 
 ## SpecialUI Library
 ---
@@ -47,7 +50,7 @@ all of the themes:
 | **Crimson** | Deep red (elegant) |
 | **Forest** | Green/nature |
 | **Amber** | Orange/warm |
-*Note: Dark, Light, Grape and Blood had the 'Theme' Suffix removed*
+*Note: Dark, Light, Grape and Blood had the 'Theme' Suffix removed from the original Kavo UI*
 
 ---
 
@@ -98,13 +101,7 @@ end)
 
 # 7.5: Updating Toggles
 ```
-Section:NewToggle("ToggleText", "ToggleInfo", function(state)
-    if state then
-        print("Toggle On")
-    else
-        print("Toggle Off")
-    end
-end)
+toggle:UpdateToggle("New Toggle Text")
 ```
 
 ---
@@ -118,42 +115,14 @@ end)
 
 ---
 
-# 9: Creating Toggles
-```
-Section:NewTextBox("TextboxText", "TextboxInfo", function(txt)
-	print(txt)
-end)
-```
-
-# 9.5: Updating Toggles
-```
-getgenv().Toggled = false
-
-local toggle = Section:NewToggle("Toggle", "Info", function(state)
-    getgenv().Toggled = state
-    toggle:UpdateToggle(state and "Toggle On" or "Toggle Off")
-end)
-
-game:GetService("RunService").RenderStepped:Connect(function()
-    if getgenv().Toggled then
-        toggle:UpdateToggle("Toggle On")
-    else
-        toggle:UpdateToggle("Toggle Off")
-    end
-end)
-
-```
-
----
-
-# 10: Creating Dropdonws
+# 9: Creating Dropdonws
 ```
 Section:NewDropdown("DropdownText", "DropdownInf", {"Option 1", "Option 2", "Option 3"}, function(currentOption)
     print(currentOption)
 end)
 ```
 
-# 10.5: Refreshing Dropdowns
+# 9.5: Refreshing Dropdowns
 ```
 local oldList = {
   "2019",
@@ -173,14 +142,14 @@ end)
 
 ---
 
-# 11: Creating Keybinds
+# 10: Creating Keybinds
 ```
 Section:NewKeybind("KeybindText", "KeybindInfo", Enum.KeyCode.F, function()
 	print("You just clicked the bind")
 end)
 ```
 
-# 11.5: Toggling UI with Keybinds
+# 10.5: Toggling UI with Keybinds
 ```
 Section:NewKeybind("KeybindText", "KeybindInfo", Enum.KeyCode.F, function()
 	Library:ToggleUI()
@@ -189,7 +158,7 @@ end)
 
 ---
 
-# 12: Creating Color Pickers
+# 11: Creating Color Pickers
 ```
 Section:NewColorPicker("Color Text", "Color Info", Color3.fromRGB(255, 0, 0), function(color)
     print(color)
@@ -198,9 +167,9 @@ end)
 
 ---
 
-## 13: Applying Custom themes
+## 12: Applying Custom themes
 ```
-local myTheme = {
+local MyTheme = {
     SchemeColor = Color3.fromRGB(255, 100, 100),
     Background = Color3.fromRGB(30, 30, 40),
     Header = Color3.fromRGB(20, 20, 30),
@@ -211,7 +180,7 @@ local myTheme = {
 # Though, applying it will have you to change your window code a bit
 local Window = Library.CreateLib("Example", MyTheme)
 
-# 14: Clean up (DestroyUI)
+# 13: Clean up (DestroyUI)
 **Call this to prevent Memory leaks when the player leaves or the script ends:**
 ```
 Library.DestroyUI()
