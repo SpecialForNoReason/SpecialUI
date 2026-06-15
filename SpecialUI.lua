@@ -1,3 +1,6 @@
+-- Credits to xHeptc for Kavo UI Lib
+-- SpecialUI Lib v0.1-Preview2
+
 local SpecialUI = {}
 
 local tween = game:GetService("TweenService")
@@ -11,15 +14,11 @@ local Utility = {}
 local ActiveConnections = {}
 local ActiveThreads = {}
 local ActiveObjects = {}
+local ThemeEvent = nil
 
 local function AddConnection(conn)
     table.insert(ActiveConnections, conn)
     return conn
-end
-
-local function AddThread(th)
-    table.insert(ActiveThreads, th)
-    return th
 end
 
 local function AddObject(obj)
@@ -28,7 +27,11 @@ local function AddObject(obj)
 end
 
 function Utility:TweenObject(obj, properties, duration, ...)
-    tween:Create(obj, tweeninfo(duration, ...), properties):Play()
+    if obj and obj.Parent then
+        local twe = tween:Create(obj, tweeninfo(duration, ...), properties)
+        twe:Play()
+        return twe
+    end
 end
 
 local ThemeStyles = {
@@ -151,10 +154,11 @@ function SpecialUI:DraggingEnabled(frame, parent)
     local dragging = false
     local dragStart = nil
     local startPos = nil
-    local currentInput
+    local currentInput = nil
     local dragTween = nil
 
     local function update(input)
+        if not parent or not parent.Parent then return end
         local delta = input.Position - dragStart
         local targetPos = UDim2.new(
             startPos.X.Scale,
@@ -168,6 +172,7 @@ function SpecialUI:DraggingEnabled(frame, parent)
     end
 
     local conn1 = frame.InputBegan:Connect(function(i)
+        if not parent or not parent.Parent then return end
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = i.Position
@@ -183,6 +188,7 @@ function SpecialUI:DraggingEnabled(frame, parent)
     AddConnection(conn1)
 
     local conn2 = frame.InputChanged:Connect(function(i)
+        if not parent or not parent.Parent then return end
         if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
             currentInput = i
         end
@@ -190,6 +196,7 @@ function SpecialUI:DraggingEnabled(frame, parent)
     AddConnection(conn2)
 
     local conn3 = input.InputChanged:Connect(function(i)
+        if not parent or not parent.Parent then return end
         if dragging and i == currentInput then
             update(i)
         end
@@ -207,20 +214,34 @@ function SpecialUI:ToggleUI()
 end
 
 function SpecialUI.DestroyUI()
-    for _, conn in ipairs(ActiveConnections) do
-        pcall(function() conn:Disconnect() end)
+    if ThemeEvent then
+        ThemeEvent:Destroy()
+        ThemeEvent = nil
     end
-    for _, thread in ipairs(ActiveThreads) do
-        if thread.active ~= nil then
-            thread.active = false
+    for i = #ActiveConnections, 1, -1 do
+        local conn = ActiveConnections[i]
+        if conn then
+            pcall(function() conn:Disconnect() end)
         end
+        ActiveConnections[i] = nil
     end
-    for _, obj in ipairs(ActiveObjects) do
-        pcall(function() obj:Destroy() end)
+    for i = #ActiveThreads, 1, -1 do
+        local thread = ActiveThreads[i]
+        if thread then
+            pcall(function() coroutine.close(thread) end)
+        end
+        ActiveThreads[i] = nil
+    end
+    for i = #ActiveObjects, 1, -1 do
+        local obj = ActiveObjects[i]
+        if obj and obj.Parent then
+            pcall(function() obj:Destroy() end)
+        end
+        ActiveObjects[i] = nil
     end
     local gui = game.CoreGui:FindFirstChild(LibName)
     if gui then
-        gui:Destroy()
+        pcall(function() gui:Destroy() end)
     end
     ActiveConnections = {}
     ActiveThreads = {}
@@ -228,6 +249,12 @@ function SpecialUI.DestroyUI()
 end
 
 function SpecialUI.CreateLib(kavName, themeName)
+    if ThemeEvent then
+        ThemeEvent:Destroy()
+        ThemeEvent = nil
+    end
+    ThemeEvent = Instance.new("BindableEvent")
+    
     local themeList = GetTheme(themeName)
     kavName = kavName or "Library"
     
@@ -362,16 +389,18 @@ function SpecialUI.CreateLib(kavName, themeName)
     
     SpecialUI:DraggingEnabled(MainHeader, Main)
     
-    local themeUpdater = AddThread({active = true, thread = task.spawn(function()
-        while themeUpdater.active do
-            task.wait()
-            Main.BackgroundColor3 = themeList.Background
-            MainHeader.BackgroundColor3 = themeList.Header
-            MainSide.BackgroundColor3 = themeList.Header
-            coverup_2.BackgroundColor3 = themeList.Header
-            coverup.BackgroundColor3 = themeList.Header
-        end
-    end)})
+    local function UpdateAllThemeColors()
+        if not Main or not Main.Parent then return end
+        Main.BackgroundColor3 = themeList.Background
+        MainHeader.BackgroundColor3 = themeList.Header
+        MainSide.BackgroundColor3 = themeList.Header
+        coverup_2.BackgroundColor3 = themeList.Header
+        coverup.BackgroundColor3 = themeList.Header
+    end
+    
+    local themeConn = ThemeEvent.Event:Connect(UpdateAllThemeColors)
+    AddConnection(themeConn)
+    UpdateAllThemeColors()
     
     function SpecialUI:ChangeColor(prop, color)
         if prop == "Background" then
@@ -385,6 +414,7 @@ function SpecialUI.CreateLib(kavName, themeName)
         elseif prop == "ElementColor" then
             themeList.ElementColor = color
         end
+        ThemeEvent:Fire()
     end
     
     local Tabs = {}
@@ -398,10 +428,15 @@ function SpecialUI.CreateLib(kavName, themeName)
         local pageListing = Instance.new("UIListLayout")
         
         local function UpdateSize()
-            local cS = pageListing.AbsoluteContentSize
-            tween:Create(page, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
-                CanvasSize = UDim2.new(0, cS.X, 0, cS.Y)
-            }):Play()
+            if not page or not page.Parent then return end
+            local success, cS = pcall(function() return pageListing.AbsoluteContentSize end)
+            if success and cS then
+                pcall(function()
+                    tween:Create(page, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
+                        CanvasSize = UDim2.new(0, cS.X, 0, cS.Y)
+                    }):Play()
+                end)
+            end
         end
         
         page.Name = "Page"
@@ -453,7 +488,9 @@ function SpecialUI.CreateLib(kavName, themeName)
         local tabClickConn = tabButton.MouseButton1Click:Connect(function()
             UpdateSize()
             for _, v in pairs(Pages:GetChildren()) do
-                v.Visible = false
+                if v:IsA("ScrollingFrame") then
+                    v.Visible = false
+                end
             end
             page.Visible = true
             for _, v in pairs(tabFrames:GetChildren()) do
@@ -469,15 +506,19 @@ function SpecialUI.CreateLib(kavName, themeName)
         local focusing = false
         local viewDe = false
         
-        local pageUpdater = AddThread({active = true, thread = task.spawn(function()
-            while pageUpdater.active do
-                task.wait()
-                page.BackgroundColor3 = themeList.Background
-                page.ScrollBarImageColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 16, themeList.SchemeColor.G * 255 - 15, themeList.SchemeColor.B * 255 - 28)
+        local function UpdateTabTheme()
+            if not page or not page.Parent then return end
+            page.BackgroundColor3 = themeList.Background
+            page.ScrollBarImageColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 16, themeList.SchemeColor.G * 255 - 15, themeList.SchemeColor.B * 255 - 28)
+            if tabButton and tabButton.Parent then
                 tabButton.TextColor3 = themeList.TextColor
                 tabButton.BackgroundColor3 = themeList.SchemeColor
             end
-        end)})
+        end
+        
+        local themeConn = ThemeEvent.Event:Connect(UpdateTabTheme)
+        AddConnection(themeConn)
+        UpdateTabTheme()
         
         function Sections:NewSection(secName, hidden)
             secName = secName or "Section"
@@ -535,20 +576,16 @@ function SpecialUI.CreateLib(kavName, themeName)
             sectionElListing.SortOrder = Enum.SortOrder.LayoutOrder
             sectionElListing.Padding = UDim.new(0, 3)
             
-            local sectionUpdater = AddThread({active = true, thread = task.spawn(function()
-                while sectionUpdater.active do
-                    task.wait()
-                    sectionFrame.BackgroundColor3 = themeList.Background
-                    sectionHead.BackgroundColor3 = themeList.SchemeColor
-                    sectionName.TextColor3 = themeList.TextColor
-                end
-            end)})
-            
             local function updateSectionFrame()
-                local innerSc = sectionElListing.AbsoluteContentSize
-                sectionInners.Size = UDim2.new(1, 0, 0, innerSc.Y)
-                local frameSc = sectionlistoknvm.AbsoluteContentSize
-                sectionFrame.Size = UDim2.new(0, 352, 0, frameSc.Y)
+                if not sectionInners or not sectionInners.Parent then return end
+                local success, innerSc = pcall(function() return sectionElListing.AbsoluteContentSize end)
+                if success and innerSc then
+                    sectionInners.Size = UDim2.new(1, 0, 0, innerSc.Y)
+                end
+                local success2, frameSc = pcall(function() return sectionlistoknvm.AbsoluteContentSize end)
+                if success2 and frameSc then
+                    sectionFrame.Size = UDim2.new(0, 352, 0, frameSc.Y)
+                end
             end
             
             updateSectionFrame()
@@ -563,6 +600,21 @@ function SpecialUI.CreateLib(kavName, themeName)
             local childRemovedConn = sectionInners.ChildRemoved:Connect(onChildChanged)
             AddConnection(childAddedConn)
             AddConnection(childRemovedConn)
+            
+            local function UpdateSectionTheme()
+                if not sectionFrame or not sectionFrame.Parent then return end
+                sectionFrame.BackgroundColor3 = themeList.Background
+                if sectionHead then
+                    sectionHead.BackgroundColor3 = themeList.SchemeColor
+                end
+                if sectionName then
+                    sectionName.TextColor3 = themeList.TextColor
+                end
+            end
+            
+            local themeConn = ThemeEvent.Event:Connect(UpdateSectionTheme)
+            AddConnection(themeConn)
+            UpdateSectionTheme()
             
             local Elements = {}
             
@@ -663,38 +715,55 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local clickConn = btn.MouseButton1Click:Connect(function()
                     if not focusing then
                         callback()
-                        local c = sample:Clone()
-                        c.Parent = btn
-                        local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                        c.Position = UDim2.new(0, x, 0, y)
-                        local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                        c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                        for i = 1, 10 do
-                            c.ImageTransparency = c.ImageTransparency + 0.05
-                            task.wait(0.35 / 12)
+                        if btn and btn.Parent then
+                            local c = sample:Clone()
+                            c.Parent = btn
+                            local success, x, y = pcall(function() 
+                                return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                            end)
+                            if success then
+                                c.Position = UDim2.new(0, x, 0, y)
+                            end
+                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                            local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                            if twe then
+                                AddConnection(twe:Destroy())
+                            end
+                            for i = 1, 10 do
+                                c.ImageTransparency = c.ImageTransparency + 0.05
+                                task.wait(0.35 / 12)
+                            end
+                            c:Destroy()
                         end
-                        c:Destroy()
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                 end)
                 AddConnection(clickConn)
                 
                 local enterConn = btn.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = btn.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
@@ -705,40 +774,56 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if btn and btn.Parent then
+                            Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
                 AddConnection(viewConn)
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            buttonElement.BackgroundColor3 = themeList.ElementColor
-                        end
-                        viewInfo.ImageColor3 = themeList.SchemeColor
-                        Sample.ImageColor3 = themeList.SchemeColor
+                local function UpdateButtonTheme()
+                    if not buttonElement or not buttonElement.Parent then return end
+                    if not isHovering then
+                        buttonElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if Sample then Sample.ImageColor3 = themeList.SchemeColor end
+                    if moreInfo then 
                         moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
                         moreInfo.TextColor3 = themeList.TextColor
-                        touch.ImageColor3 = themeList.SchemeColor
-                        btnInfo.TextColor3 = themeList.TextColor
                     end
-                end)})
+                    if touch then touch.ImageColor3 = themeList.SchemeColor end
+                    if btnInfo then btnInfo.TextColor3 = themeList.TextColor end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateButtonTheme)
+                AddConnection(themeConn)
+                UpdateButtonTheme()
                 
                 local ButtonFunction = {}
                 function ButtonFunction:UpdateButton(newTitle)
-                    btnInfo.Text = newTitle
+                    if btnInfo then
+                        btnInfo.Text = newTitle
+                    end
                 end
                 return ButtonFunction
             end
@@ -846,25 +931,33 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local clickConn = btn.MouseButton1Click:Connect(function()
                     if focusing then
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                 end)
                 AddConnection(clickConn)
                 
                 local enterConn = btn.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = btn.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
@@ -873,10 +966,14 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local focusLostConn = TextBox.FocusLost:Connect(function(enterPressed)
                     if focusing then
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                     if enterPressed then
                         callback(TextBox.Text)
@@ -891,37 +988,53 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if btn and btn.Parent then
+                            Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
                 AddConnection(viewConn)
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            textboxElement.BackgroundColor3 = themeList.ElementColor
-                        end
+                local function UpdateTextBoxTheme()
+                    if not textboxElement or not textboxElement.Parent then return end
+                    if not isHovering then
+                        textboxElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if TextBox then 
                         TextBox.BackgroundColor3 = themeList.ElementColor:lerp(Color3.new(0, 0, 0), 0.2)
-                        viewInfo.ImageColor3 = themeList.SchemeColor
-                        moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
-                        moreInfo.TextColor3 = themeList.TextColor
-                        write.ImageColor3 = themeList.SchemeColor
-                        togName.TextColor3 = themeList.TextColor
                         TextBox.TextColor3 = themeList.TextColor
                     end
-                end)})
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if moreInfo then
+                        moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
+                        moreInfo.TextColor3 = themeList.TextColor
+                    end
+                    if write then write.ImageColor3 = themeList.SchemeColor end
+                    if togName then togName.TextColor3 = themeList.TextColor end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateTextBoxTheme)
+                AddConnection(themeConn)
+                UpdateTextBoxTheme()
             end
             
             function Elements:NewToggle(tname, nTip, callback)
@@ -1033,55 +1146,85 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local clickConn = btn.MouseButton1Click:Connect(function()
                     if not focusing then
                         if not toggled then
-                            tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 0}):Play()
-                            local c = sample:Clone()
-                            c.Parent = btn
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            local twe = tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 0})
+                            twe:Play()
+                            AddConnection(twe:Destroy())
+                            if btn and btn.Parent then
+                                local c = sample:Clone()
+                                c.Parent = btn
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                                local twe2 = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe2 then
+                                    AddConnection(twe2:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         else
-                            tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 1}):Play()
-                            local c = sample:Clone()
-                            c.Parent = btn
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            local twe = tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 1})
+                            twe:Play()
+                            AddConnection(twe:Destroy())
+                            if btn and btn.Parent then
+                                local c = sample:Clone()
+                                c.Parent = btn
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                                local twe2 = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe2 then
+                                    AddConnection(twe2:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         end
                         toggled = not toggled
                         pcall(callback, toggled)
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                 end)
                 AddConnection(clickConn)
                 
                 local enterConn = btn.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = btn.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
@@ -1092,49 +1235,67 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if btn and btn.Parent then
+                            Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
                 AddConnection(viewConn)
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            toggleElement.BackgroundColor3 = themeList.ElementColor
-                        end
-                        toggleDisabled.ImageColor3 = themeList.SchemeColor
-                        toggleEnabled.ImageColor3 = themeList.SchemeColor
-                        togName.TextColor3 = themeList.TextColor
-                        viewInfo.ImageColor3 = themeList.SchemeColor
-                        Sample.ImageColor3 = themeList.SchemeColor
+                local function UpdateToggleTheme()
+                    if not toggleElement or not toggleElement.Parent then return end
+                    if not isHovering then
+                        toggleElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if toggleDisabled then toggleDisabled.ImageColor3 = themeList.SchemeColor end
+                    if toggleEnabled then toggleEnabled.ImageColor3 = themeList.SchemeColor end
+                    if togName then togName.TextColor3 = themeList.TextColor end
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if Sample then Sample.ImageColor3 = themeList.SchemeColor end
+                    if moreInfo then
                         moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
                         moreInfo.TextColor3 = themeList.TextColor
                     end
-                end)})
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateToggleTheme)
+                AddConnection(themeConn)
+                UpdateToggleTheme()
                 
                 local TogFunction = {}
                 function TogFunction:UpdateToggle(newText, isTogOn)
-                    if newText then
+                    if newText and togName then
                         togName.Text = newText
                     end
                     if isTogOn ~= nil then
                         toggled = isTogOn
                         if toggled then
-                            tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 0}):Play()
+                            local twe = tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 0})
+                            twe:Play()
+                            AddConnection(twe:Destroy())
                         else
-                            tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 1}):Play()
+                            local twe = tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = 1})
+                            twe:Play()
+                            AddConnection(twe:Destroy())
                         end
                         pcall(callback, toggled)
                     end
@@ -1276,42 +1437,54 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local releaseconnection = nil
                 
                 local enterConn = btn.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = btn.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
                 AddConnection(leaveConn)
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            sliderElement.BackgroundColor3 = themeList.ElementColor
-                        end
+                local function UpdateSliderTheme()
+                    if not sliderElement or not sliderElement.Parent then return end
+                    if not isHovering then
+                        sliderElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if moreInfo then
                         moreInfo.TextColor3 = themeList.TextColor
                         moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
-                        val.TextColor3 = themeList.TextColor
-                        write.ImageColor3 = themeList.SchemeColor
-                        togName.TextColor3 = themeList.TextColor
-                        viewInfo.ImageColor3 = themeList.SchemeColor
-                        sliderBtn.BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 5, themeList.ElementColor.G * 255 + 5, themeList.ElementColor.B * 255 + 5)
-                        sliderDrag.BackgroundColor3 = themeList.SchemeColor
                     end
-                end)})
+                    if val then val.TextColor3 = themeList.TextColor end
+                    if write then write.ImageColor3 = themeList.SchemeColor end
+                    if togName then togName.TextColor3 = themeList.TextColor end
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if sliderBtn then 
+                        sliderBtn.BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 5, themeList.ElementColor.G * 255 + 5, themeList.ElementColor.B * 255 + 5)
+                    end
+                    if sliderDrag then sliderDrag.BackgroundColor3 = themeList.SchemeColor end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateSliderTheme)
+                AddConnection(themeConn)
+                UpdateSliderTheme()
                 
                 local Value
                 local sliderDownConn = sliderBtn.MouseButton1Down:Connect(function()
                     if not focusing then
-                        tween:Create(val, TweenInfo.new(0.1), {TextTransparency = 0}):Play()
+                        local twe = tween:Create(val, TweenInfo.new(0.1), {TextTransparency = 0})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         Value = math.floor((((maxvalue - minvalue) / 149) * sliderDrag.AbsoluteSize.X) + minvalue)
                         pcall(callback, Value)
                         sliderDrag:TweenSize(UDim2.new(0, math.clamp(mouse.X - sliderDrag.AbsolutePosition.X, 0, 149), 0, 6), "InOut", "Linear", 0.05, true)
@@ -1327,7 +1500,9 @@ function SpecialUI.CreateLib(kavName, themeName)
                                 Value = math.floor((((maxvalue - minvalue) / 149) * sliderDrag.AbsoluteSize.X) + minvalue)
                                 pcall(callback, Value)
                                 val.Text = Value
-                                tween:Create(val, TweenInfo.new(0.1), {TextTransparency = 1}):Play()
+                                local twe2 = tween:Create(val, TweenInfo.new(0.1), {TextTransparency = 1})
+                                twe2:Play()
+                                AddConnection(twe2:Destroy())
                                 sliderDrag:TweenSize(UDim2.new(0, math.clamp(mouse.X - sliderDrag.AbsolutePosition.X, 0, 149), 0, 6), "InOut", "Linear", 0.05, true)
                                 if moveconnection then moveconnection:Disconnect() end
                                 if releaseconnection then releaseconnection:Disconnect() end
@@ -1336,10 +1511,14 @@ function SpecialUI.CreateLib(kavName, themeName)
                         AddConnection(releaseconnection)
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                 end)
                 AddConnection(sliderDownConn)
@@ -1349,17 +1528,27 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if btn and btn.Parent then
+                            Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
@@ -1423,42 +1612,66 @@ function SpecialUI.CreateLib(kavName, themeName)
                             task.wait(0.1)
                             updateSectionFrame()
                             UpdateSize()
-                            local c = sample:Clone()
-                            c.Parent = btn
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            if btn and btn.Parent then
+                                local c = sample:Clone()
+                                c.Parent = btn
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                                local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe then
+                                    AddConnection(twe:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         else
                             opened = true
-                            dropFrame:TweenSize(UDim2.new(0, 352, 0, UIListLayout.AbsoluteContentSize.Y), "InOut", "Linear", 0.08, true)
+                            local contentSize = UIListLayout.AbsoluteContentSize
+                            dropFrame:TweenSize(UDim2.new(0, 352, 0, contentSize.Y), "InOut", "Linear", 0.08, true)
                             task.wait(0.1)
                             updateSectionFrame()
                             UpdateSize()
-                            local c = sample:Clone()
-                            c.Parent = btn
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            if btn and btn.Parent then
+                                local c = sample:Clone()
+                                c.Parent = btn
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                                local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe then
+                                    AddConnection(twe:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         end
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
-                    end                end)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
+                    end
+                end)
                 AddConnection(dropClickConn)
                 
                 listImg.Name = "listImg"
@@ -1525,16 +1738,20 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local isHovering = false
                 
                 local enterConn = dropOpen.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(dropOpen, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and dropOpen and dropOpen.Parent then
+                        local twe = tween:Create(dropOpen, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = dropOpen.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(dropOpen, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and dropOpen and dropOpen.Parent then
+                        local twe = tween:Create(dropOpen, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
@@ -1545,37 +1762,51 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(dropOpen, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if dropOpen and dropOpen.Parent then
+                            Utility:TweenObject(dropOpen, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
                 AddConnection(viewConn)
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            dropOpen.BackgroundColor3 = themeList.ElementColor
-                        end
-                        Sample.ImageColor3 = themeList.SchemeColor
-                        dropFrame.BackgroundColor3 = themeList.Background
-                        listImg.ImageColor3 = themeList.SchemeColor
-                        itemTextbox.TextColor3 = themeList.TextColor
-                        viewInfo.ImageColor3 = themeList.SchemeColor
+                local function UpdateDropdownTheme()
+                    if not dropOpen or not dropOpen.Parent then return end
+                    if not isHovering then
+                        dropOpen.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if Sample then Sample.ImageColor3 = themeList.SchemeColor end
+                    if dropFrame then dropFrame.BackgroundColor3 = themeList.Background end
+                    if listImg then listImg.ImageColor3 = themeList.SchemeColor end
+                    if itemTextbox then itemTextbox.TextColor3 = themeList.TextColor end
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if moreInfo then
                         moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
                         moreInfo.TextColor3 = themeList.TextColor
                     end
-                end)})
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateDropdownTheme)
+                AddConnection(themeConn)
+                UpdateDropdownTheme()
                 
                 for i, v in ipairs(list) do
                     local optionSelect = Instance.new("TextButton")
@@ -1613,23 +1844,36 @@ function SpecialUI.CreateLib(kavName, themeName)
                             task.wait(0.1)
                             updateSectionFrame()
                             UpdateSize()
-                            local c = sample1:Clone()
-                            c.Parent = optionSelect
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = optionSelect.AbsoluteSize.X >= optionSelect.AbsoluteSize.Y and (optionSelect.AbsoluteSize.X * 1.5) or (optionSelect.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            if optionSelect and optionSelect.Parent then
+                                local c = sample1:Clone()
+                                c.Parent = optionSelect
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = optionSelect.AbsoluteSize.X >= optionSelect.AbsoluteSize.Y and (optionSelect.AbsoluteSize.X * 1.5) or (optionSelect.AbsoluteSize.Y * 1.5)
+                                local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe then
+                                    AddConnection(twe:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         else
                             for _, v in pairs(infoContainer:GetChildren()) do
-                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                                if v and v.Parent then
+                                    Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                                end
                                 focusing = false
                             end
-                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                            if blurFrame and blurFrame.Parent then
+                                Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                            end
                         end
                     end)
                     AddConnection(optionClickConn)
@@ -1639,31 +1883,37 @@ function SpecialUI.CreateLib(kavName, themeName)
                     
                     local optHover = false
                     local optEnterConn = optionSelect.MouseEnter:Connect(function()
-                        if not focusing then
-                            tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                        if not focusing and optionSelect and optionSelect.Parent then
+                            local twe = tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                            twe:Play()
+                            AddConnection(twe:Destroy())
                             optHover = true
                         end
                     end)
                     AddConnection(optEnterConn)
                     
                     local optLeaveConn = optionSelect.MouseLeave:Connect(function()
-                        if not focusing then
-                            tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                        if not focusing and optionSelect and optionSelect.Parent then
+                            local twe = tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                            twe:Play()
+                            AddConnection(twe:Destroy())
                             optHover = false
                         end
                     end)
                     AddConnection(optLeaveConn)
                     
-                    local optUpdater = AddThread({active = true, thread = task.spawn(function()
-                        while optUpdater.active do
-                            task.wait()
-                            if not optHover then
-                                optionSelect.BackgroundColor3 = themeList.ElementColor
-                            end
-                            optionSelect.TextColor3 = Color3.fromRGB(themeList.TextColor.R * 255 - 6, themeList.TextColor.G * 255 - 6, themeList.TextColor.B * 255 - 6)
-                            Sample1.ImageColor3 = themeList.SchemeColor
+                    local function UpdateOptionTheme()
+                        if not optionSelect or not optionSelect.Parent then return end
+                        if not optHover then
+                            optionSelect.BackgroundColor3 = themeList.ElementColor
                         end
-                    end)})
+                        optionSelect.TextColor3 = Color3.fromRGB(themeList.TextColor.R * 255 - 6, themeList.TextColor.G * 255 - 6, themeList.TextColor.B * 255 - 6)
+                        if Sample1 then Sample1.ImageColor3 = themeList.SchemeColor end
+                    end
+                    
+                    local themeConn = ThemeEvent.Event:Connect(UpdateOptionTheme)
+                    AddConnection(themeConn)
+                    UpdateOptionTheme()
                 end
                 
                 function DropFunction:Refresh(newList)
@@ -1711,57 +1961,77 @@ function SpecialUI.CreateLib(kavName, themeName)
                                 task.wait(0.1)
                                 updateSectionFrame()
                                 UpdateSize()
-                                local c = sample11:Clone()
-                                c.Parent = optionSelect
-                                local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                                c.Position = UDim2.new(0, x, 0, y)
-                                local size = optionSelect.AbsoluteSize.X >= optionSelect.AbsoluteSize.Y and (optionSelect.AbsoluteSize.X * 1.5) or (optionSelect.AbsoluteSize.Y * 1.5)
-                                c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                                for i = 1, 10 do
-                                    c.ImageTransparency = c.ImageTransparency + 0.05
-                                    task.wait(0.35 / 12)
+                                if optionSelect and optionSelect.Parent then
+                                    local c = sample11:Clone()
+                                    c.Parent = optionSelect
+                                    local success, x, y = pcall(function() 
+                                        return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                    end)
+                                    if success then
+                                        c.Position = UDim2.new(0, x, 0, y)
+                                    end
+                                    local size = optionSelect.AbsoluteSize.X >= optionSelect.AbsoluteSize.Y and (optionSelect.AbsoluteSize.X * 1.5) or (optionSelect.AbsoluteSize.Y * 1.5)
+                                    local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                    if twe then
+                                        AddConnection(twe:Destroy())
+                                    end
+                                    for i = 1, 10 do
+                                        c.ImageTransparency = c.ImageTransparency + 0.05
+                                        task.wait(0.35 / 12)
+                                    end
+                                    c:Destroy()
                                 end
-                                c:Destroy()
                             else
                                 for _, v in pairs(infoContainer:GetChildren()) do
-                                    Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                                    if v and v.Parent then
+                                        Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                                    end
                                     focusing = false
                                 end
-                                Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                                if blurFrame and blurFrame.Parent then
+                                    Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                                end
                             end
                         end)
                         AddConnection(optClickConn)
                         
                         local optHover = false
                         local optEnterConn = optionSelect.MouseEnter:Connect(function()
-                            if not focusing then
-                                tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                            if not focusing and optionSelect and optionSelect.Parent then
+                                local twe = tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                                twe:Play()
+                                AddConnection(twe:Destroy())
                                 optHover = true
                             end
                         end)
                         AddConnection(optEnterConn)
                         
                         local optLeaveConn = optionSelect.MouseLeave:Connect(function()
-                            if not focusing then
-                                tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                            if not focusing and optionSelect and optionSelect.Parent then
+                                local twe = tween:Create(optionSelect, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                                twe:Play()
+                                AddConnection(twe:Destroy())
                                 optHover = false
                             end
                         end)
                         AddConnection(optLeaveConn)
                         
-                        local optUpdater = AddThread({active = true, thread = task.spawn(function()
-                            while optUpdater.active do
-                                task.wait()
-                                if not optHover then
-                                    optionSelect.BackgroundColor3 = themeList.ElementColor
-                                end
-                                optionSelect.TextColor3 = Color3.fromRGB(themeList.TextColor.R * 255 - 6, themeList.TextColor.G * 255 - 6, themeList.TextColor.B * 255 - 6)
-                                Sample11.ImageColor3 = themeList.SchemeColor
+                        local function UpdateOptionTheme()
+                            if not optionSelect or not optionSelect.Parent then return end
+                            if not optHover then
+                                optionSelect.BackgroundColor3 = themeList.ElementColor
                             end
-                        end)})
+                            optionSelect.TextColor3 = Color3.fromRGB(themeList.TextColor.R * 255 - 6, themeList.TextColor.G * 255 - 6, themeList.TextColor.B * 255 - 6)
+                            if Sample11 then Sample11.ImageColor3 = themeList.SchemeColor end
+                        end
+                        
+                        local themeConn = ThemeEvent.Event:Connect(UpdateOptionTheme)
+                        AddConnection(themeConn)
+                        UpdateOptionTheme()
                     end
                     if opened then
-                        dropFrame:TweenSize(UDim2.new(0, 352, 0, UIListLayout.AbsoluteContentSize.Y), "InOut", "Linear", 0.08, true)
+                        local contentSize = UIListLayout.AbsoluteContentSize
+                        dropFrame:TweenSize(UDim2.new(0, 352, 0, contentSize.Y), "InOut", "Linear", 0.08, true)
                         task.wait(0.1)
                         updateSectionFrame()
                         UpdateSize()
@@ -1816,29 +2086,42 @@ function SpecialUI.CreateLib(kavName, themeName)
                             togName_2.Text = inputBegan.KeyCode.Name
                             oldKey = inputBegan.KeyCode.Name
                         end
-                        local c = sample:Clone()
-                        c.Parent = keybindElement
-                        local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                        c.Position = UDim2.new(0, x, 0, y)
-                        local size = keybindElement.AbsoluteSize.X >= keybindElement.AbsoluteSize.Y and (keybindElement.AbsoluteSize.X * 1.5) or (keybindElement.AbsoluteSize.Y * 1.5)
-                        c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                        for i = 1, 10 do
-                            c.ImageTransparency = c.ImageTransparency + 0.05
-                            task.wait(0.35 / 12)
+                        if keybindElement and keybindElement.Parent then
+                            local c = sample:Clone()
+                            c.Parent = keybindElement
+                            local success, x, y = pcall(function() 
+                                return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                            end)
+                            if success then
+                                c.Position = UDim2.new(0, x, 0, y)
+                            end
+                            local size = keybindElement.AbsoluteSize.X >= keybindElement.AbsoluteSize.Y and (keybindElement.AbsoluteSize.X * 1.5) or (keybindElement.AbsoluteSize.Y * 1.5)
+                            local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                            if twe then
+                                AddConnection(twe:Destroy())
+                            end
+                            for i = 1, 10 do
+                                c.ImageTransparency = c.ImageTransparency + 0.05
+                                task.wait(0.35 / 12)
+                            end
+                            c:Destroy()
                         end
-                        c:Destroy()
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                 end)
                 AddConnection(keybindClickConn)
                 
                 local inputBeganConn = uis.InputBegan:Connect(function(current, processed)
-                    if not processed then
+                    if not processed and not focusing then
                         if current.KeyCode.Name == oldKey then
                             callback()
                         end
@@ -1896,17 +2179,27 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(keybindElement, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if keybindElement and keybindElement.Parent then
+                            Utility:TweenObject(keybindElement, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
@@ -1918,16 +2211,20 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local isHovering = false
                 
                 local enterConn = keybindElement.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(keybindElement, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and keybindElement and keybindElement.Parent then
+                        local twe = tween:Create(keybindElement, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = keybindElement.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(keybindElement, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and keybindElement and keybindElement.Parent then
+                        local twe = tween:Create(keybindElement, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
@@ -1957,21 +2254,25 @@ function SpecialUI.CreateLib(kavName, themeName)
                 togName_2.TextSize = 14
                 togName_2.TextXAlignment = Enum.TextXAlignment.Right
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            keybindElement.BackgroundColor3 = themeList.ElementColor
-                        end
-                        togName_2.TextColor3 = themeList.SchemeColor
-                        touch.ImageColor3 = themeList.SchemeColor
-                        viewInfo.ImageColor3 = themeList.SchemeColor
-                        togName.TextColor3 = themeList.TextColor
-                        Sample.ImageColor3 = themeList.SchemeColor
+                local function UpdateKeybindTheme()
+                    if not keybindElement or not keybindElement.Parent then return end
+                    if not isHovering then
+                        keybindElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if togName_2 then togName_2.TextColor3 = themeList.SchemeColor end
+                    if touch then touch.ImageColor3 = themeList.SchemeColor end
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if togName then togName.TextColor3 = themeList.TextColor end
+                    if Sample then Sample.ImageColor3 = themeList.SchemeColor end
+                    if moreInfo then
                         moreInfo.TextColor3 = themeList.TextColor
                         moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
                     end
-                end)})
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateKeybindTheme)
+                AddConnection(themeConn)
+                UpdateKeybindTheme()
             end
             
             function Elements:NewColorPicker(colText, colInf, defcolor, callback)
@@ -2036,41 +2337,63 @@ function SpecialUI.CreateLib(kavName, themeName)
                             task.wait(0.1)
                             updateSectionFrame()
                             UpdateSize()
-                            local c = sample:Clone()
-                            c.Parent = btn
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            if btn and btn.Parent then
+                                local c = sample:Clone()
+                                c.Parent = btn
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                                local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe then
+                                    AddConnection(twe:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         else
                             colorOpened = true
                             colorElement:TweenSize(UDim2.new(0, 352, 0, 141), "InOut", "Linear", 0.08, true)
                             task.wait(0.1)
                             updateSectionFrame()
                             UpdateSize()
-                            local c = sample:Clone()
-                            c.Parent = btn
-                            local x, y = (ms.X - c.AbsolutePosition.X), (ms.Y - c.AbsolutePosition.Y)
-                            c.Position = UDim2.new(0, x, 0, y)
-                            local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
-                            c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
-                            for i = 1, 10 do
-                                c.ImageTransparency = c.ImageTransparency + 0.05
-                                task.wait(0.35 / 12)
+                            if btn and btn.Parent then
+                                local c = sample:Clone()
+                                c.Parent = btn
+                                local success, x, y = pcall(function() 
+                                    return ms.X - c.AbsolutePosition.X, ms.Y - c.AbsolutePosition.Y 
+                                end)
+                                if success then
+                                    c.Position = UDim2.new(0, x, 0, y)
+                                end
+                                local size = btn.AbsoluteSize.X >= btn.AbsoluteSize.Y and (btn.AbsoluteSize.X * 1.5) or (btn.AbsoluteSize.Y * 1.5)
+                                local twe = c:TweenSizeAndPosition(UDim2.new(0, size, 0, size), UDim2.new(0.5, -size/2, 0.5, -size/2), 'Out', 'Quad', 0.35, true, nil)
+                                if twe then
+                                    AddConnection(twe:Destroy())
+                                end
+                                for i = 1, 10 do
+                                    c.ImageTransparency = c.ImageTransparency + 0.05
+                                    task.wait(0.35 / 12)
+                                end
+                                c:Destroy()
                             end
-                            c:Destroy()
                         end
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            if v and v.Parent then
+                                Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                            end
                             focusing = false
                         end
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                     end
                 end)
                 AddConnection(colorClickConn)
@@ -2254,7 +2577,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local cursor2 = darkcircle
                 local color = {1, 1, 1}
                 local rainbow = false
-                local rainbowconnection
+                local rainbowconnection = nil
                 local counter = 0
                 
                 local function zigzag(X)
@@ -2323,13 +2646,18 @@ function SpecialUI.CreateLib(kavName, themeName)
                 
                 local function togglerainbow()
                     if rainbow then
-                        tween:Create(toggleEnabled, TweenInfo.new(0.1), {ImageTransparency = 1}):Play()
+                        local twe = tween:Create(toggleEnabled, TweenInfo.new(0.1), {ImageTransparency = 1})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         rainbow = false
                         if rainbowconnection then
                             rainbowconnection:Disconnect()
+                            rainbowconnection = nil
                         end
                     else
-                        tween:Create(toggleEnabled, TweenInfo.new(0.1), {ImageTransparency = 0}):Play()
+                        local twe = tween:Create(toggleEnabled, TweenInfo.new(0.1), {ImageTransparency = 0})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         rainbow = true
                         rainbowconnection = rs.RenderStepped:Connect(function()
                             setrgbcolor({zigzag(counter), 1, 1})
@@ -2368,17 +2696,27 @@ function SpecialUI.CreateLib(kavName, themeName)
                         viewDe = true
                         focusing = true
                         for _, v in pairs(infoContainer:GetChildren()) do
-                            if v ~= moreInfo then
+                            if v and v ~= moreInfo and v.Parent then
                                 Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
                             end
                         end
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
-                        Utility:TweenObject(colorElement, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2)
+                        end
+                        if colorElement and colorElement.Parent then
+                            Utility:TweenObject(colorElement, {BackgroundColor3 = themeList.ElementColor}, 0.2)
+                        end
                         task.wait(1.5)
                         focusing = false
-                        Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
-                        Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        if moreInfo and moreInfo.Parent then
+                            Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2)
+                        end
+                        if blurFrame and blurFrame.Parent then
+                            Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2)
+                        end
                         viewDe = false
                     end
                 end)
@@ -2387,40 +2725,48 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local isHovering = false
                 
                 local enterConn = colorElement.MouseEnter:Connect(function()
-                    if not focusing then
-                        tween:Create(colorElement, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)}):Play()
+                    if not focusing and colorElement and colorElement.Parent then
+                        local twe = tween:Create(colorElement, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(themeList.ElementColor.R * 255 + 8, themeList.ElementColor.G * 255 + 9, themeList.ElementColor.B * 255 + 10)})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
                 local leaveConn = colorElement.MouseLeave:Connect(function()
-                    if not focusing then
-                        tween:Create(colorElement, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor}):Play()
+                    if not focusing and colorElement and colorElement.Parent then
+                        local twe = tween:Create(colorElement, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                        twe:Play()
+                        AddConnection(twe:Destroy())
                         isHovering = false
                     end
                 end)
                 AddConnection(leaveConn)
                 
-                local elementUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while elementUpdater.active do
-                        task.wait()
-                        if not isHovering then
-                            colorElement.BackgroundColor3 = themeList.ElementColor
-                        end
-                        touch.ImageColor3 = themeList.SchemeColor
-                        colorHeader.BackgroundColor3 = themeList.ElementColor
-                        togName.TextColor3 = themeList.TextColor
+                local function UpdateColorPickerTheme()
+                    if not colorElement or not colorElement.Parent then return end
+                    if not isHovering then
+                        colorElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if touch then touch.ImageColor3 = themeList.SchemeColor end
+                    if colorHeader then colorHeader.BackgroundColor3 = themeList.ElementColor end
+                    if togName then togName.TextColor3 = themeList.TextColor end
+                    if moreInfo then
                         moreInfo.BackgroundColor3 = Color3.fromRGB(themeList.SchemeColor.R * 255 - 14, themeList.SchemeColor.G * 255 - 17, themeList.SchemeColor.B * 255 - 13)
                         moreInfo.TextColor3 = themeList.TextColor
-                        viewInfo.ImageColor3 = themeList.SchemeColor
-                        colorInners.BackgroundColor3 = themeList.ElementColor
-                        toggleDisabled.ImageColor3 = themeList.SchemeColor
-                        toggleEnabled.ImageColor3 = themeList.SchemeColor
-                        rainbowLabel.TextColor3 = themeList.TextColor
-                        Sample.ImageColor3 = themeList.SchemeColor
                     end
-                end)})
+                    if viewInfo then viewInfo.ImageColor3 = themeList.SchemeColor end
+                    if colorInners then colorInners.BackgroundColor3 = themeList.ElementColor end
+                    if toggleDisabled then toggleDisabled.ImageColor3 = themeList.SchemeColor end
+                    if toggleEnabled then toggleEnabled.ImageColor3 = themeList.SchemeColor end
+                    if rainbowLabel then rainbowLabel.TextColor3 = themeList.TextColor end
+                    if Sample then Sample.ImageColor3 = themeList.SchemeColor end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateColorPickerTheme)
+                AddConnection(themeConn)
+                UpdateColorPickerTheme()
                 
                 setcolor({h, s, v})
             end
@@ -2448,17 +2794,19 @@ function SpecialUI.CreateLib(kavName, themeName)
                 updateSectionFrame()
                 UpdateSize()
                 
-                local labelUpdater = AddThread({active = true, thread = task.spawn(function()
-                    while labelUpdater.active do
-                        task.wait()
-                        label.BackgroundColor3 = themeList.SchemeColor
-                        label.TextColor3 = themeList.TextColor
-                    end
-                end)})
+                local function UpdateLabelTheme()
+                    if not label or not label.Parent then return end
+                    label.BackgroundColor3 = themeList.SchemeColor
+                    label.TextColor3 = themeList.TextColor
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateLabelTheme)
+                AddConnection(themeConn)
+                UpdateLabelTheme()
                 
                 local labelFunc = {}
                 function labelFunc:UpdateLabel(newText)
-                    if label.Text ~= "  " .. newText then
+                    if label and label.Text ~= "  " .. newText then
                         label.Text = "  " .. newText
                     end
                 end
