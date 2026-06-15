@@ -182,8 +182,12 @@ local MyTheme = {
     ElementColor = Color3.fromRGB(35, 35, 45)
 }
 ```
-# Though, applying it will have you to change your window code a bit
+# Though, applying it will have you to change your window code a bit:
+```
 local Window = Library.CreateLib("Example", MyTheme)
+```
+
+---
 
 # 13: Clean up (DestroyUI)
 **Call this to prevent Memory leaks when the player leaves or the script ends:**
