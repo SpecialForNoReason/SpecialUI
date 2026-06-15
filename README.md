@@ -82,6 +82,7 @@ end)
 
 # 6.5: Update Button Text
 ```
+local button = Section:NewButton("Text", "Info", function() end)
 button:UpdateButton("New Text")
 ```
 *note: the button must be stored in a variable before updating it*
@@ -102,6 +103,10 @@ end)
 # 7.5: Updating Toggles
 ```
 toggle:UpdateToggle("New Toggle Text")
+
+toggle:UpdateToggle("New Toggle Text")  -- changes text only
+toggle:UpdateToggle(nil, true)          -- turns on without changing text
+toggle:UpdateToggle("Fly Mode", true)   -- changes both
 ```
 
 ---
@@ -115,7 +120,7 @@ end)
 
 ---
 
-# 9: Creating Dropdonws
+# 9: Creating Dropdowns
 ```
 Section:NewDropdown("DropdownText", "DropdownInf", {"Option 1", "Option 2", "Option 3"}, function(currentOption)
     print(currentOption)
