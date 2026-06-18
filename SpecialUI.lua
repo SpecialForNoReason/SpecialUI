@@ -2966,7 +2966,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 AddConnection(themeConn)
                 UpdateConsoleTheme()
                 
-                PrintToConsole("SpecialUI Sundae v1.0.0 loaded!", themeList.SchemeColor)
+                PrintToConsole("SpecialUI Sundae v1.0.0", themeList.SchemeColor)
                 PrintToConsole("Welcome " .. game.Players.LocalPlayer.Name .. "!", themeList.TextColor)
                 
                 if captureLogService then
