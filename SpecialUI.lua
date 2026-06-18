@@ -22,7 +22,30 @@ local Pages = nil
 local tabFrames = nil
 local infoContainer = nil
 local blurFrame = nil
-local themeList = nil
+
+local ThemeStyles = {
+    Dark = { SchemeColor = Color3.fromRGB(64, 64, 64), Background = Color3.fromRGB(0, 0, 0), Header = Color3.fromRGB(0, 0, 0), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 20) },
+    Light = { SchemeColor = Color3.fromRGB(200, 200, 200), Background = Color3.fromRGB(255,255,255), Header = Color3.fromRGB(200, 200, 200), TextColor = Color3.fromRGB(0,0,0), ElementColor = Color3.fromRGB(224, 224, 224) },
+    Grey = { SchemeColor = Color3.fromRGB(150, 150, 150), Background = Color3.fromRGB(30, 30, 35), Header = Color3.fromRGB(20, 20, 25), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 45, 50) },
+    Blood = { SchemeColor = Color3.fromRGB(227, 27, 27), Background = Color3.fromRGB(10, 10, 10), Header = Color3.fromRGB(5, 5, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 20) },
+    Grape = { SchemeColor = Color3.fromRGB(166, 71, 214), Background = Color3.fromRGB(64, 50, 71), Header = Color3.fromRGB(36, 28, 41), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(74, 58, 84) },
+    Ocean = { SchemeColor = Color3.fromRGB(86, 76, 251), Background = Color3.fromRGB(26, 32, 58), Header = Color3.fromRGB(38, 45, 71), TextColor = Color3.fromRGB(200, 200, 200), ElementColor = Color3.fromRGB(38, 45, 71) },
+    MidNight = { SchemeColor = Color3.fromRGB(26, 189, 158), Background = Color3.fromRGB(44, 62, 82), Header = Color3.fromRGB(57, 81, 105), TextColor = Color3.fromRGB(255, 255, 255), ElementColor = Color3.fromRGB(52, 74, 95) },
+    Night = { SchemeColor = Color3.fromRGB(100, 100, 200), Background = Color3.fromRGB(10, 10, 20), Header = Color3.fromRGB(5, 5, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 35) },
+    Sunset = { SchemeColor = Color3.fromRGB(255, 140, 0), Background = Color3.fromRGB(40, 20, 25), Header = Color3.fromRGB(30, 15, 20), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(55, 30, 35) },
+    Sentinel = { SchemeColor = Color3.fromRGB(230, 35, 69), Background = Color3.fromRGB(32, 32, 32), Header = Color3.fromRGB(24, 24, 24), TextColor = Color3.fromRGB(119, 209, 138), ElementColor = Color3.fromRGB(24, 24, 24) },
+    Synapse = { SchemeColor = Color3.fromRGB(46, 48, 43), Background = Color3.fromRGB(13, 15, 12), Header = Color3.fromRGB(36, 38, 35), TextColor = Color3.fromRGB(152, 99, 53), ElementColor = Color3.fromRGB(24, 24, 24) },
+    Amoled = { SchemeColor = Color3.fromRGB(100, 100, 100), Background = Color3.fromRGB(0, 0, 0), Header = Color3.fromRGB(0, 0, 0), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(10, 10, 10) },
+    Lavender = { SchemeColor = Color3.fromRGB(180, 136, 255), Background = Color3.fromRGB(25, 20, 35), Header = Color3.fromRGB(20, 15, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 45) },
+    Crimson = { SchemeColor = Color3.fromRGB(220, 20, 60), Background = Color3.fromRGB(15, 15, 20), Header = Color3.fromRGB(10, 10, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 25) },
+    Forest = { SchemeColor = Color3.fromRGB(34, 139, 34), Background = Color3.fromRGB(20, 30, 20), Header = Color3.fromRGB(15, 25, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(25, 35, 25) },
+    Amber = { SchemeColor = Color3.fromRGB(255, 126, 0), Background = Color3.fromRGB(25, 20, 15), Header = Color3.fromRGB(20, 15, 10), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 20) },
+    Ice = { SchemeColor = Color3.fromRGB(0, 200, 255), Background = Color3.fromRGB(20, 25, 35), Header = Color3.fromRGB(15, 20, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 40, 55) },
+    Fire = { SchemeColor = Color3.fromRGB(255, 80, 0), Background = Color3.fromRGB(35, 15, 10), Header = Color3.fromRGB(25, 10, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 25, 15) }
+}
+
+-- Set initial theme reference to prevent nil index errors
+local themeList = table.clone(ThemeStyles.Dark)
 
 local function safeCall(func, ...)
     local success, result = pcall(func, ...)
@@ -47,27 +70,6 @@ function Utility:TweenObject(obj, properties, duration, ...)
         return twe
     end
 end
-
-local ThemeStyles = {
-    Dark = { SchemeColor = Color3.fromRGB(64, 64, 64), Background = Color3.fromRGB(0, 0, 0), Header = Color3.fromRGB(0, 0, 0), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 20) },
-    Light = { SchemeColor = Color3.fromRGB(200, 200, 200), Background = Color3.fromRGB(255,255,255), Header = Color3.fromRGB(200, 200, 200), TextColor = Color3.fromRGB(0,0,0), ElementColor = Color3.fromRGB(224, 224, 224) },
-    Grey = { SchemeColor = Color3.fromRGB(150, 150, 150), Background = Color3.fromRGB(30, 30, 35), Header = Color3.fromRGB(20, 20, 25), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 45, 50) },
-    Blood = { SchemeColor = Color3.fromRGB(227, 27, 27), Background = Color3.fromRGB(10, 10, 10), Header = Color3.fromRGB(5, 5, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 20) },
-    Grape = { SchemeColor = Color3.fromRGB(166, 71, 214), Background = Color3.fromRGB(64, 50, 71), Header = Color3.fromRGB(36, 28, 41), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(74, 58, 84) },
-    Ocean = { SchemeColor = Color3.fromRGB(86, 76, 251), Background = Color3.fromRGB(26, 32, 58), Header = Color3.fromRGB(38, 45, 71), TextColor = Color3.fromRGB(200, 200, 200), ElementColor = Color3.fromRGB(38, 45, 71) },
-    MidNight = { SchemeColor = Color3.fromRGB(26, 189, 158), Background = Color3.fromRGB(44, 62, 82), Header = Color3.fromRGB(57, 81, 105), TextColor = Color3.fromRGB(255, 255, 255), ElementColor = Color3.fromRGB(52, 74, 95) },
-    Night = { SchemeColor = Color3.fromRGB(100, 100, 200), Background = Color3.fromRGB(10, 10, 20), Header = Color3.fromRGB(5, 5, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 35) },
-    Sunset = { SchemeColor = Color3.fromRGB(255, 140, 0), Background = Color3.fromRGB(40, 20, 25), Header = Color3.fromRGB(30, 15, 20), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(55, 30, 35) },
-    Sentinel = { SchemeColor = Color3.fromRGB(230, 35, 69), Background = Color3.fromRGB(32, 32, 32), Header = Color3.fromRGB(24, 24, 24), TextColor = Color3.fromRGB(119, 209, 138), ElementColor = Color3.fromRGB(24, 24, 24) },
-    Synapse = { SchemeColor = Color3.fromRGB(46, 48, 43), Background = Color3.fromRGB(13, 15, 12), Header = Color3.fromRGB(36, 38, 35), TextColor = Color3.fromRGB(152, 99, 53), ElementColor = Color3.fromRGB(24, 24, 24) },
-    Amoled = { SchemeColor = Color3.fromRGB(100, 100, 100), Background = Color3.fromRGB(0, 0, 0), Header = Color3.fromRGB(0, 0, 0), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(10, 10, 10) },
-    Lavender = { SchemeColor = Color3.fromRGB(180, 136, 255), Background = Color3.fromRGB(25, 20, 35), Header = Color3.fromRGB(20, 15, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 45) },
-    Crimson = { SchemeColor = Color3.fromRGB(220, 20, 60), Background = Color3.fromRGB(15, 15, 20), Header = Color3.fromRGB(10, 10, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 25) },
-    Forest = { SchemeColor = Color3.fromRGB(34, 139, 34), Background = Color3.fromRGB(20, 30, 20), Header = Color3.fromRGB(15, 25, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(25, 35, 25) },
-    Amber = { SchemeColor = Color3.fromRGB(255, 126, 0), Background = Color3.fromRGB(25, 20, 15), Header = Color3.fromRGB(20, 15, 10), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 20) },
-    Ice = { SchemeColor = Color3.fromRGB(0, 200, 255), Background = Color3.fromRGB(20, 25, 35), Header = Color3.fromRGB(15, 20, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 40, 55) },
-    Fire = { SchemeColor = Color3.fromRGB(255, 80, 0), Background = Color3.fromRGB(35, 15, 10), Header = Color3.fromRGB(25, 10, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 25, 15) }
-}
 
 local function GetTheme(theme)
     if type(theme) == "string" then
@@ -137,7 +139,6 @@ function SpecialUI.DestroyUI()
     tabFrames = nil
     infoContainer = nil
     blurFrame = nil
-    themeList = nil
 end
 
 function SpecialUI:SetTheme(theme)
@@ -186,7 +187,11 @@ function SpecialUI.CreateLib(kavName, themeName)
     if ThemeEvent then safeCall(ThemeEvent.Destroy, ThemeEvent); ThemeEvent = nil end
     ThemeEvent = Instance.new("BindableEvent")
     
-    themeList = GetTheme(themeName)
+    local resolvedTheme = GetTheme(themeName)
+    for key, val in pairs(resolvedTheme) do
+        themeList[key] = val
+    end
+    
     CurrentThemeName = type(themeName) == "string" and themeName or "Custom"
     kavName = kavName or "Library"
     LibName = tostring(math.random(1000, 9999)) .. tostring(math.random(1000, 9999))
@@ -444,6 +449,8 @@ function SpecialUI.CreateLib(kavName, themeName)
         local focusing = false
         local viewDe = false
         
+        Sections._updateSize = UpdateSize
+        
         local function UpdateTabTheme()
             if not page or not page.Parent then return end
             page.BackgroundColor3 = themeList.Background
@@ -543,6 +550,7 @@ function SpecialUI.CreateLib(kavName, themeName)
             UpdateSectionTheme()
             
             local Elements = {}
+            Elements._frame = sectionFrame
             
             function Elements:NewButton(bname, tipInf, callback)
                 tipInf = tipInf or "Click this button"
@@ -640,7 +648,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 
                 local clickConn = btn.MouseButton1Click:Connect(function()
                     if not focusing then
-                        callback()
+                        safeCall(callback)
                         if btn and btn.Parent then
                             local c = sample:Clone()
                             c.Parent = btn
@@ -865,7 +873,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                         if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
                     end
                     if enterPressed then
-                        callback(TextBox.Text)
+                        safeCall(callback, TextBox.Text)
                         task.wait(0.18)
                         TextBox.Text = ""
                     end
@@ -1061,7 +1069,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                             end
                         end
                         toggled = not toggled
-                        pcall(callback, toggled)
+                        safeCall(callback, toggled)
                     else
                         for _, v in pairs(infoContainer:GetChildren()) do
                             if v and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
@@ -1134,7 +1142,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                         toggled = newState
                         local twe = tween:Create(img, TweenInfo.new(0.11), {ImageTransparency = toggled and 0 or 1})
                         twe:Play()
-                        pcall(callback, toggled)
+                        safeCall(callback, toggled)
                     end
                 end
                 return ToggleFunction
@@ -1158,7 +1166,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local write = Instance.new("ImageLabel")
                 local val = Instance.new("TextLabel")
                 local isDragging = false
-                local mouse = game.Players.LocalPlayer:GetMouse()
                 local uis = game:GetService("UserInputService")
                 local currentValue = minvalue
                 local moveConn = nil
@@ -1269,10 +1276,10 @@ function SpecialUI.CreateLib(kavName, themeName)
                 updateSectionFrame()
                 UpdateSize()
                 
-                local function updateSlider(input)
+                local function updateSlider(inpObj)
                     if not sliderDrag or not sliderDrag.Parent then return end
                     if not sliderBtn or not sliderBtn.Parent then return end
-                    local mouseX = input.Position.X
+                    local mouseX = inpObj.Position.X
                     local btnPos = sliderBtn.AbsolutePosition.X
                     local btnWidth = sliderBtn.AbsoluteSize.X
                     if btnWidth <= 0 then return end
@@ -1280,38 +1287,39 @@ function SpecialUI.CreateLib(kavName, themeName)
                     local percent = newPos / btnWidth
                     local value = math.floor(minvalue + (maxvalue - minvalue) * percent)
                     value = math.clamp(value, minvalue, maxvalue)
-                    sliderDrag.Size = UDim2.new(0, newPos, 1, 0)
+                    
+                    sliderDrag.Size = UDim2.new(percent, 0, 1, 0)
                     val.Text = tostring(value)
                     currentValue = value
-                    pcall(callback, value)
+                    safeCall(callback, value)
                 end
                 
-                local function startDrag(input)
-                    if focusing then
-                        for _, v in pairs(infoContainer:GetChildren()) do
-                            if v and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
+                local sliderDownConn = sliderBtn.InputBegan:Connect(function(inpObj)
+                    if inpObj.UserInputType == Enum.UserInputType.MouseButton1 or inpObj.UserInputType == Enum.UserInputType.Touch then
+                        if focusing then
+                            for _, v in pairs(infoContainer:GetChildren()) do
+                                if v and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
+                            end
                             focusing = false
+                            if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
+                            return
                         end
-                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
-                        return
+                        isDragging = true
+                        val.TextTransparency = 0
+                        updateSlider(inpObj)
                     end
-                    isDragging = true
-                    val.TextTransparency = 0
-                    updateSlider(input)
-                end
-                
-                local sliderDownConn = sliderBtn.MouseButton1Down:Connect(startDrag)
+                end)
                 AddConnection(sliderDownConn)
                 
-                moveConn = uis.InputChanged:Connect(function(input)
-                    if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                        updateSlider(input)
+                moveConn = uis.InputChanged:Connect(function(inpObj)
+                    if isDragging and (inpObj.UserInputType == Enum.UserInputType.MouseMovement or inpObj.UserInputType == Enum.UserInputType.Touch) then
+                        updateSlider(inpObj)
                     end
                 end)
                 AddConnection(moveConn)
                 
-                releaseConn = uis.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 and isDragging then
+                releaseConn = uis.InputEnded:Connect(function(inpObj)
+                    if (inpObj.UserInputType == Enum.UserInputType.MouseButton1 or inpObj.UserInputType == Enum.UserInputType.Touch) and isDragging then
                         isDragging = false
                         val.TextTransparency = 1
                     end
@@ -1383,14 +1391,9 @@ function SpecialUI.CreateLib(kavName, themeName)
                     value = math.clamp(value, minvalue, maxvalue)
                     currentValue = value
                     local percent = (value - minvalue) / (maxvalue - minvalue)
-                    local btnWidth = sliderBtn.AbsoluteSize.X
-                    if btnWidth > 0 then
-                        sliderDrag.Size = UDim2.new(0, btnWidth * percent, 1, 0)
-                    else
-                        sliderDrag.Size = UDim2.new(percent, 0, 1, 0)
-                    end
+                    sliderDrag.Size = UDim2.new(percent, 0, 1, 0)
                     val.Text = tostring(value)
-                    pcall(callback, value)
+                    safeCall(callback, value)
                 end
                 return SliderFunction
             end
@@ -1645,7 +1648,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                     local optionClickConn = optionSelect.MouseButton1Click:Connect(function()
                         if not focusing then
                             opened = false
-                            callback(v)
+                            safeCall(callback, v)
                             itemTextbox.Text = v
                             dropFrame:TweenSize(UDim2.new(0, 352, 0, 33), 'InOut', 'Linear', 0.08)
                             task.wait(0.1)
@@ -1746,7 +1749,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                         local optClickConn = optionSelect.MouseButton1Click:Connect(function()
                             if not focusing then
                                 opened = false
-                                callback(v)
+                                safeCall(callback, v)
                                 itemTextbox.Text = v
                                 dropFrame:TweenSize(UDim2.new(0, 352, 0, 33), 'InOut', 'Linear', 0.08)
                                 task.wait(0.1)
@@ -1909,7 +1912,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local inputBeganConn = uis.InputBegan:Connect(function(current, processed)
                     if not processed and not focusing and not waitingForKey then
                         if current.KeyCode.Name == oldKey then 
-                            pcall(callback)
+                            safeCall(callback)
                         end
                     end
                 end)
@@ -2056,7 +2059,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 callback = callback or function() end
                 defcolor = defcolor or Color3.fromRGB(255, 255, 255)
                 local h, s, v = Color3.toHSV(defcolor)
-                local ms = game.Players.LocalPlayer:GetMouse()
                 local colorOpened = false
                 
                 local colorElement = Instance.new("TextButton")
@@ -2104,6 +2106,8 @@ function SpecialUI.CreateLib(kavName, themeName)
                 colorElement.Text = ""
                 colorElement.TextColor3 = Color3.fromRGB(0, 0, 0)
                 colorElement.TextSize = 14
+                
+                local ms = game.Players.LocalPlayer:GetMouse()
                 
                 local colorClickConn = colorElement.MouseButton1Click:Connect(function()
                     if not focusing then
@@ -2327,8 +2331,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 updateSectionFrame()
                 UpdateSize()
                 
-                local plr = game.Players.LocalPlayer
-                local mouse = plr:GetMouse()
                 local uis = game:GetService("UserInputService")
                 local rs = game:GetService("RunService")
                 local colorpicker = false
@@ -2345,43 +2347,39 @@ function SpecialUI.CreateLib(kavName, themeName)
                     return math.acos(math.cos(X * math.pi)) / math.pi
                 end
                 
-                local function mouseLocation()
-                    return plr:GetMouse()
-                end
-                
-                local function cp()
+                local function updateColor(input)
                     if colorpicker then
-                        local ml = mouseLocation()
-                        local x, y = ml.X - rgb.AbsolutePosition.X, ml.Y - rgb.AbsolutePosition.Y
+                        local x = input.Position.X - rgb.AbsolutePosition.X
+                        local y = input.Position.Y - rgb.AbsolutePosition.Y
                         local maxX, maxY = rgb.AbsoluteSize.X, rgb.AbsoluteSize.Y
-                        if x < 0 then x = 0 end
-                        if x > maxX then x = maxX end
-                        if y < 0 then y = 0 end
-                        if y > maxY then y = maxY end
-                        x = x / maxX
-                        y = y / maxY
+                        if maxX <= 0 or maxY <= 0 then return end
+                        
+                        x = math.clamp(x / maxX, 0, 1)
+                        y = math.clamp(y / maxY, 0, 1)
+                        
                         local cx = cursor.AbsoluteSize.X / 2
                         local cy = cursor.AbsoluteSize.Y / 2
                         cursor.Position = UDim2.new(x, -cx, y, -cy)
+                        
                         color = {1 - x, 1 - y, color[3]}
                         local realcolor = Color3.fromHSV(color[1], color[2], color[3])
                         colorCurrent.BackgroundColor3 = realcolor
-                        pcall(callback, realcolor)
-                    end
-                    if darknesss then
-                        local ml = mouseLocation()
-                        local y = ml.Y - dark.AbsolutePosition.Y
+                        safeCall(callback, realcolor)
+                    elseif darknesss then
+                        local y = input.Position.Y - dark.AbsolutePosition.Y
                         local maxY = dark.AbsoluteSize.Y
-                        if y < 0 then y = 0 end
-                        if y > maxY then y = maxY end
-                        y = y / maxY
+                        if maxY <= 0 then return end
+                        
+                        y = math.clamp(y / maxY, 0, 1)
+                        
                         local cy = cursor2.AbsoluteSize.Y / 2
                         cursor2.Position = UDim2.new(0.5, 0, y, -cy)
                         cursor2.ImageColor3 = Color3.fromHSV(0, 0, y)
+                        
                         color = {color[1], color[2], 1 - y}
                         local realcolor = Color3.fromHSV(color[1], color[2], color[3])
                         colorCurrent.BackgroundColor3 = realcolor
-                        pcall(callback, realcolor)
+                        safeCall(callback, realcolor)
                     end
                 end
                 
@@ -2389,8 +2387,8 @@ function SpecialUI.CreateLib(kavName, themeName)
                     local cx = cursor.AbsoluteSize.X / 2
                     local cy = cursor.AbsoluteSize.Y / 2
                     color = {tbl[1], tbl[2], tbl[3]}
-                    cursor.Position = UDim2.new(color[1], -cx, color[2], -cy)
-                    cursor2.Position = UDim2.new(0.5, 0, color[3], -cy)
+                    cursor.Position = UDim2.new(1 - color[1], -cx, 1 - color[2], -cy)
+                    cursor2.Position = UDim2.new(0.5, 0, 1 - color[3], -cy)
                     local realcolor = Color3.fromHSV(color[1], color[2], color[3])
                     colorCurrent.BackgroundColor3 = realcolor
                 end
@@ -2399,10 +2397,10 @@ function SpecialUI.CreateLib(kavName, themeName)
                     local cx = cursor.AbsoluteSize.X / 2
                     local cy = cursor.AbsoluteSize.Y / 2
                     color = {tbl[1], tbl[2], color[3]}
-                    cursor.Position = UDim2.new(color[1], -cx, color[2], -cy)
+                    cursor.Position = UDim2.new(1 - color[1], -cx, 1 - color[2], -cy)
                     local realcolor = Color3.fromHSV(color[1], color[2], color[3])
                     colorCurrent.BackgroundColor3 = realcolor
-                    pcall(callback, realcolor)
+                    safeCall(callback, realcolor)
                 end
                 
                 local function togglerainbow()
@@ -2412,6 +2410,12 @@ function SpecialUI.CreateLib(kavName, themeName)
                         rainbow = false
                         if rainbowconnection then
                             rainbowconnection:Disconnect()
+                            for idx, conn in ipairs(ActiveConnections) do
+                                if conn == rainbowconnection then
+                                    table.remove(ActiveConnections, idx)
+                                    break
+                                end
+                            end
                             rainbowconnection = nil
                         end
                     else
@@ -2429,26 +2433,36 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local rainbowClickConn = onrainbow.MouseButton1Click:Connect(togglerainbow)
                 AddConnection(rainbowClickConn)
                 
-                local mouseMoveConn = mouse.Move:Connect(cp)
-                AddConnection(mouseMoveConn)
-                
-                local rgbDownConn = rgb.MouseButton1Down:Connect(function()
-                    colorpicker = true
+                local rgbDownConn = rgb.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        colorpicker = true
+                        updateColor(input)
+                    end
                 end)
                 AddConnection(rgbDownConn)
                 
-                local darkDownConn = dark.MouseButton1Down:Connect(function()
-                    darknesss = true
+                local darkDownConn = dark.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        darknesss = true
+                        updateColor(input)
+                    end
                 end)
                 AddConnection(darkDownConn)
                 
-                local inputEndedConn = uis.InputEnded:Connect(function(input)
-                    if input.UserInputType.Name == 'MouseButton1' then
-                        if darknesss then darknesss = false end
-                        if colorpicker then colorpicker = false end
+                local pickMoveConn = uis.InputChanged:Connect(function(input)
+                    if (colorpicker or darknesss) and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        updateColor(input)
                     end
                 end)
-                AddConnection(inputEndedConn)
+                AddConnection(pickMoveConn)
+                
+                local pickEndConn = uis.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        colorpicker = false
+                        darknesss = false
+                    end
+                end)
+                AddConnection(pickEndConn)
                 
                 local viewConn = viewInfo.MouseButton1Click:Connect(function()
                     if not viewDe then
@@ -2597,7 +2611,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 togName.TextSize = 14
                 togName.TextXAlignment = Enum.TextXAlignment.Left
                 
-                local ms = game.Players.LocalPlayer:GetMouse()
                 local btn = toggleElement
                 local isHovering = false
                 
@@ -2681,23 +2694,22 @@ function SpecialUI.CreateLib(kavName, themeName)
                 mainRect.Parent = sectionInners
                 mainRect.BackgroundColor3 = themeList.ElementColor
                 mainRect.BackgroundTransparency = 0.15
-                mainRect.Position = UDim2.new(0, 2, 0, 2)
-                mainRect.Size = UDim2.new(1, -4, 0, 150)
+                mainRect.Size = UDim2.new(0, 352, 0, 110)
                 mainRect.ClipsDescendants = true
                 
                 local rectCorner = Instance.new("UICorner")
-                rectCorner.CornerRadius = UDim.new(0, 8)
+                rectCorner.CornerRadius = UDim.new(0, 6)
                 rectCorner.Parent = mainRect
                 
                 local avatarSquare = Instance.new("Frame")
                 avatarSquare.Parent = mainRect
-                avatarSquare.Position = UDim2.new(0.03, 0, 0.1, 0)
-                avatarSquare.Size = UDim2.new(0, 90, 0, 90)
+                avatarSquare.Position = UDim2.new(0, 15, 0.5, -40)
+                avatarSquare.Size = UDim2.new(0, 80, 0, 80)
                 avatarSquare.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
                 avatarSquare.BackgroundTransparency = 0.3
                 
                 local avatarCorner = Instance.new("UICorner")
-                avatarCorner.CornerRadius = UDim.new(0, 8)
+                avatarCorner.CornerRadius = UDim.new(0, 6)
                 avatarCorner.Parent = avatarSquare
                 
                 local avatarImage = Instance.new("ImageLabel")
@@ -2721,56 +2733,56 @@ function SpecialUI.CreateLib(kavName, themeName)
                     avatarImage.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
                 end
                 
+                local rightFrame = Instance.new("Frame")
+                rightFrame.Parent = mainRect
+                rightFrame.BackgroundTransparency = 1
+                rightFrame.Position = UDim2.new(0, 110, 0.5, -45)
+                rightFrame.Size = UDim2.new(0, 227, 0, 90)
+                
+                local rightLayout = Instance.new("UIListLayout")
+                rightLayout.Parent = rightFrame
+                rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                rightLayout.Padding = UDim.new(0, 4)
+                rightLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+                
                 local welcomeText = Instance.new("TextLabel")
-                welcomeText.Parent = mainRect
+                welcomeText.Parent = rightFrame
                 welcomeText.BackgroundTransparency = 1
-                welcomeText.Position = UDim2.new(0.28, 0, 0.08, 0)
-                welcomeText.Size = UDim2.new(0, 200, 0, 18)
+                welcomeText.Size = UDim2.new(1, 0, 0, 14)
                 welcomeText.Font = Enum.Font.FredokaOne
                 welcomeText.Text = "Welcome,"
                 welcomeText.TextColor3 = themeList.TextColor
-                welcomeText.TextSize = 14
+                welcomeText.TextSize = 12
                 welcomeText.TextXAlignment = Enum.TextXAlignment.Left
                 welcomeText.TextTransparency = 0.5
+                welcomeText.LayoutOrder = 1
                 
                 local usernameText = Instance.new("TextLabel")
-                usernameText.Parent = mainRect
+                usernameText.Parent = rightFrame
                 usernameText.BackgroundTransparency = 1
-                usernameText.Position = UDim2.new(0.28, 0, 0.28, 0)
-                usernameText.Size = UDim2.new(0, 200, 0, 26)
+                usernameText.Size = UDim2.new(1, 0, 0, 22)
                 usernameText.Font = Enum.Font.FredokaOne
                 usernameText.Text = game.Players.LocalPlayer.Name
                 usernameText.TextColor3 = themeList.SchemeColor
-                usernameText.TextSize = 24
+                usernameText.TextSize = 18
                 usernameText.TextXAlignment = Enum.TextXAlignment.Left
+                usernameText.LayoutOrder = 2
                 
                 local buttonFrame = Instance.new("Frame")
-                buttonFrame.Parent = mainRect
+                buttonFrame.Parent = rightFrame
                 buttonFrame.BackgroundTransparency = 1
-                
-                if numButtons == 1 then
-                    buttonFrame.Position = UDim2.new(0.28, 0, 0.62, 0)
-                    buttonFrame.Size = UDim2.new(0, 120, 0, 30)
-                elseif numButtons >= 2 then
-                    buttonFrame.Position = UDim2.new(0.28, 0, 0.58, 0)
-                    buttonFrame.Size = UDim2.new(0, 220, 0, 30)
-                    welcomeText.TextSize = 12
-                    welcomeText.Position = UDim2.new(0.28, 0, 0.06, 0)
-                    usernameText.TextSize = 20
-                    usernameText.Position = UDim2.new(0.28, 0, 0.22, 0)
-                else
-                    buttonFrame.Position = UDim2.new(0.28, 0, 0.62, 0)
-                    buttonFrame.Size = UDim2.new(0, 120, 0, 30)
-                end
+                buttonFrame.Size = UDim2.new(1, 0, 0, 28)
+                buttonFrame.LayoutOrder = 3
                 
                 local buttonLayout = Instance.new("UIListLayout")
                 buttonLayout.Parent = buttonFrame
                 buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
                 buttonLayout.FillDirection = Enum.FillDirection.Horizontal
-                buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+                buttonLayout.Padding = UDim.new(0, 8)
                 buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
                 
-                local buttonWidth = numButtons == 1 and 120 or 100
+                local spaceReserved = (numButtons - 1) * 8
+                local buttonWidth = numButtons > 0 and ((227 - spaceReserved) / numButtons) or 0
                 
                 for i, btnData in ipairs(buttons) do
                     if i <= 2 then
@@ -2778,15 +2790,15 @@ function SpecialUI.CreateLib(kavName, themeName)
                         btn.Parent = buttonFrame
                         btn.BackgroundColor3 = themeList.SchemeColor
                         btn.BackgroundTransparency = 0.2
-                        btn.Size = UDim2.new(0, buttonWidth, 0, 28)
+                        btn.Size = UDim2.new(0, buttonWidth, 0, 26)
                         btn.Font = Enum.Font.FredokaOne
                         btn.Text = btnData.text or "Button"
                         btn.TextColor3 = themeList.TextColor
-                        btn.TextSize = 12
+                        btn.TextSize = 11
                         btn.AutoButtonColor = false
                         
                         local btnCorner = Instance.new("UICorner")
-                        btnCorner.CornerRadius = UDim.new(0, 6)
+                        btnCorner.CornerRadius = UDim.new(0, 4)
                         btnCorner.Parent = btn
                         
                         btn.MouseEnter:Connect(function()
@@ -2854,6 +2866,11 @@ function SpecialUI.CreateLib(kavName, themeName)
                 consoleOutput.Active = true
                 consoleOutput.ScrollBarImageColor3 = themeList.SchemeColor
                 
+                local consoleLayout = Instance.new("UIListLayout")
+                consoleLayout.Parent = consoleOutput
+                consoleLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                consoleLayout.Padding = UDim.new(0, 2)
+                
                 local consoleLines = {}
                 local maxLines = 50
                 
@@ -2868,17 +2885,22 @@ function SpecialUI.CreateLib(kavName, themeName)
                     line.TextColor3 = color
                     line.TextSize = 11
                     line.TextXAlignment = Enum.TextXAlignment.Left
-                    line.TextTransparency = 0.8
+                    line.TextTransparency = 0.2
                     
                     table.insert(consoleLines, line)
                     if #consoleLines > maxLines then
                         local old = table.remove(consoleLines, 1)
-                        old:Destroy()
+                        if old then old:Destroy() end
                     end
-                    task.wait(0.01)
-                    local totalHeight = #consoleLines * 18
-                    consoleOutput.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
-                    consoleOutput.ScrollOffset = Vector2.new(0, totalHeight)
+                    
+                    task.spawn(function()
+                        task.wait()
+                        if consoleLayout and consoleOutput then
+                            local totalHeight = consoleLayout.AbsoluteContentSize.Y
+                            consoleOutput.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10)
+                            consoleOutput.CanvasPosition = Vector2.new(0, totalHeight)
+                        end
+                    end)
                 end
                 
                 local function UpdateConsoleTheme()
@@ -2939,63 +2961,67 @@ function SpecialUI.CreateLib(kavName, themeName)
         callback = callback or function() end
         
         local mainTab = Tabs:NewTab(tabName)
-        local section = mainTab:NewSection(tabName)
-        local optionPages = {}
-        local currentOption = nil
+        local selectorSection = mainTab:NewSection("Select Category", false)
         
-        for _, optionName in ipairs(options) do
-            local optionTab = Tabs:NewTab(optionName)
-            optionPages[optionName] = optionTab
-            local page = Pages:FindFirstChild(optionName)
-            if page and page:IsA("ScrollingFrame") then
-                page.Visible = false
-            end
+        local sectionsByOption = {}
+        for _, opt in ipairs(options) do
+            sectionsByOption[opt] = {}
         end
         
-        local dropFunc = section:NewDropdown(tabName, tabInf or "Select an option", options, function(selected)
-            for name, tab in pairs(optionPages) do
-                local page = Pages:FindFirstChild(name)
-                if page and page:IsA("ScrollingFrame") then
-                    page.Visible = false
-                end
+        local currentOption = options[1] or ""
+        
+        local SubTabs = {}
+        
+        function SubTabs:NewSectionInOption(optionName, sectionName)
+            local sec = mainTab:NewSection(sectionName or "Section", false)
+            
+            if sectionsByOption[optionName] then
+                table.insert(sectionsByOption[optionName], sec)
+            else
+                sectionsByOption[optionName] = {sec}
             end
-            if optionPages[selected] then
-                local page = Pages:FindFirstChild(selected)
-                if page and page:IsA("ScrollingFrame") then
-                    page.Visible = true
-                    for _, v in pairs(tabFrames:GetChildren()) do
-                        if v:IsA("TextButton") then
-                            if v.Name == selected .. "TabButton" then
-                                Utility:TweenObject(v, {BackgroundTransparency = 0}, 0.2)
-                            else
-                                Utility:TweenObject(v, {BackgroundTransparency = 1}, 0.2)
-                            end
-                        end
+            
+            if optionName ~= currentOption then
+                if sec._frame then sec._frame.Visible = false end
+            end
+            
+            return sec
+        end
+        
+        local dropFunc = selectorSection:NewDropdown("Category", tabInf or "Select a category", options, function(selected)
+            currentOption = selected
+            for optName, secList in pairs(sectionsByOption) do
+                local isVisible = (optName == selected)
+                for _, sec in ipairs(secList) do
+                    if sec._frame then
+                        sec._frame.Visible = isVisible
                     end
                 end
             end
-            currentOption = selected
-            callback(selected)
+            
+            task.spawn(function()
+                task.wait()
+                if mainTab._updateSize then
+                    mainTab._updateSize()
+                end
+            end)
+            
+            safeCall(callback, selected)
         end)
         
         if #options > 0 then
             task.spawn(function()
-                task.wait(0.1)
+                task.wait(0.18)
                 dropFunc.Refresh(options)
             end)
         end
         
-        local SubTabs = {}
         function SubTabs:GetOption(optionName)
-            return optionPages[optionName]
-        end
-        
-        function SubTabs:NewSectionInOption(optionName, sectionName)
-            local option = optionPages[optionName]
-            if option then
-                return option:NewSection(sectionName or "Main")
+            local MockTab = {}
+            function MockTab:NewSection(sectionName)
+                return SubTabs:NewSectionInOption(optionName, sectionName)
             end
-            return nil
+            return MockTab
         end
         
         return SubTabs
@@ -3049,7 +3075,6 @@ function SpecialUI:Destroy()
     tabFrames = nil
     infoContainer = nil
     blurFrame = nil
-    themeList = nil
     LibName = nil
     CurrentThemeName = "Dark"
     CurrentThemeTable = nil
