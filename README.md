@@ -2,16 +2,14 @@
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2)](https://discord.gg/yvGpvEAVrn)
 
 
-## SpecialUI v0.1-Preview3
+## 🍨SpecialUI Sundae (v1.0.0)🍨
 
 
 ## important notice
 ---
 
 **SpecialUI Library is a fork of Kavo UI, which was made by xHeptc.**
-SpecialUI Fixed Memory leaks and changed the API (From Kavo to SpecialUI)
-currently, its in version Beta, so it might be unstable, therefore, if you find any bugs, report 
-them to our discord server.
+SpecialUI Fixed problems in Kavo UI And added new Features 
 
 ## SpecialUI Library
 ---
@@ -35,13 +33,15 @@ local Window = Library.CreateLib("Example", "Lavender")
 all of the themes:
 | Theme | What they are |
 |-------|---------|
-| **Default** | Original Kavo blue-gray |
 | **Dark** | Pure black, minimal |
 | **Light** | White background, dark text |
+| **Grey** | Minimalist Grey Background |
 | **Blood** | Deep red, aggressive |
 | **Grape** | Purple scheme |
 | **Ocean** | Blue/cyan, fresh |
 | **Midnight** | Teal on dark blue |
+| **Night** | dark blue/purple |
+| **Sunset** | orange/pink, warm evening |
 | **Sentinel** | Red accents, green text |
 | **Synapse** | Brown/gold, Synapse style |
 | **Serpent** | Green scheme |
@@ -50,6 +50,8 @@ all of the themes:
 | **Crimson** | Deep red (elegant) |
 | **Forest** | Green/nature |
 | **Amber** | Orange/warm |
+| **Ice** | Kewl Blue/Cyan |
+| **Fire** | Bright Orange/Red |
 *Note: Dark, Light, Grape and Blood had the 'Theme' Suffix removed from the original Kavo UI*
 
 ---
@@ -61,26 +63,52 @@ local Tab = Window:NewTab("ExampleTab")
 
 ---
 
-# 4: Creating Sections
+# 4: Creating Dropdown Tabs (might not work)
+```
+local dropdownTabs = Tabs:NewDropdownTab("ExampleSettings", "Choose a settings page", 
+    {"Visual", "Audio", "Gameplay"}, 
+    function(selected)
+        print("Switched to: " .. selected)
+    end
+)
+```
+---
+
+# 5: Creating Sections
 ```
 local Section = Tab:NewSection("ExampleSection")
 ```
 ---
 
-# 5: Creating Labels
+# 6: Creating Labels
 ```
 Section:NewLabel("ExampleLabel")
 ```
 ---
 
-# 6: Creating Buttons
+
+# 7: Creating HomeCard
+```
+local home = Section:NewHomeCard({
+    buttons = {
+        {text = "Profile", callback = function() print("Profile clicked") end},
+        {text = "Settings", callback = function() print("Settings clicked") end}
+    }
+})
+home:UpdateUsername("NewUsername")
+home:RefreshAvatar()
+```
+---
+
+
+# 8: Creating Buttons
 ```
 Section:NewButton("ExampleTextButton", "ButtonInfo", function()
     print("Clicked")
 end)
 ```
 
-# 6.5: Update Button Text
+# 8.5: Update Button Text
 ```
 local button = Section:NewButton("Text", "Info", function() end)
 button:UpdateButton("New Text")
@@ -89,7 +117,7 @@ button:UpdateButton("New Text")
 
 ---
 
-# 7: Creating Toggles
+# 9: Creating Toggles
 ```
 Section:NewToggle("ToggleText", "ToggleInfo", function(state)
     if state then
@@ -100,7 +128,7 @@ Section:NewToggle("ToggleText", "ToggleInfo", function(state)
 end)
 ```
 
-# 7.5: Updating Toggles
+# 9.5: Updating Toggles
 ```
 toggle:UpdateToggle("New Toggle Text")
 
@@ -111,7 +139,14 @@ toggle:UpdateToggle("Fly Mode", true)   -- changes both
 
 ---
 
-# 8: Creating Sliders
+# 10: Creating TextBoxes
+```
+Section:NewTextBox("Input Text", "Type something here", function(text)
+    print("You typed: " .. text)
+end)
+```
+
+# 11: Creating Sliders
 ```
 Section:NewSlider("SliderText", "SliderInfo", 500, 0, function(s) -- 500 (MaxValue) | 0 (MinValue)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
@@ -120,14 +155,14 @@ end)
 
 ---
 
-# 9: Creating Dropdowns
+# 12: Creating Dropdowns
 ```
 Section:NewDropdown("DropdownText", "DropdownInf", {"Option 1", "Option 2", "Option 3"}, function(currentOption)
     print(currentOption)
 end)
 ```
 
-# 9.5: Refreshing Dropdowns
+# 12.5: Refreshing Dropdowns
 ```
 local oldList = {
   "2019",
@@ -147,23 +182,16 @@ end)
 
 ---
 
-# 10: Creating Keybinds
+# 13: Creating Keybinds
 ```
 Section:NewKeybind("KeybindText", "KeybindInfo", Enum.KeyCode.F, function()
 	print("You just clicked the bind")
 end)
 ```
 
-# 10.5: Toggling UI with Keybinds
-```
-Section:NewKeybind("KeybindText", "KeybindInfo", Enum.KeyCode.F, function()
-	Library:ToggleUI()
-end)
-```
-
 ---
 
-# 11: Creating Color Pickers
+# 14: Creating Color Pickers
 ```
 Section:NewColorPicker("Color Text", "Color Info", Color3.fromRGB(255, 0, 0), function(color)
     print(color)
@@ -172,7 +200,7 @@ end)
 
 ---
 
-## 12: Applying Custom themes
+## 15: Applying Custom themes
 ```
 local MyTheme = {
     SchemeColor = Color3.fromRGB(255, 100, 100),
@@ -189,8 +217,51 @@ local Window = Library.CreateLib("Example", MyTheme)
 
 ---
 
-# 13: Clean up (DestroyUI)
-**Call this to prevent Memory leaks when the player leaves or the script ends:**
+# 16: Theme Management
+this one's pretty confusing, therefore ill explain it here
+you can change Themes, preset2preset, preset2custom, custom2custom & custom2preset
+if its preset2preset then:
+```
+Library:SetTheme("Ocean")
+Library:SetTheme("Lavender")
+```
+if its preset2custom then:
+```
+Library:SetTheme("Ocean")
+Library:SetTheme(MyTheme)
+```
+if its custom2custom then:
+```
+Library:SetTheme(MyTheme1)
+Library:SetTheme(MyTheme2)
+```
+if its custom2preset then:
+```
+Library:SetTheme(MyTheme)
+Library:SetTheme("Lavender")
+```
+
+---
+
+# 17: Console (useless but new and kewl)
+```
+local console = Section:NewConsolePlayer()
+```
+
+---
+
+# 18: ToggleUI 
+```
+Section:NewToggleUI("Toggle UI", "Click to hide/show the UI")
+
+local toggleUI = Section:NewToggleUI("Hide UI", "Click me")
+toggleUI:UpdateText("Show UI")
+toggleUI:Press()
+```
+
+---
+
+# 19: Destroy UI
 ```
 Library.DestroyUI()
 ```
@@ -199,3 +270,5 @@ Library.DestroyUI()
 
 Join Our Discord server for Changelogs (in future updates) other future projects,and soon, more documentation.
 you can [Click here to join our discord](https://discord.gg/yvGpvEAVrn)
+
+i am incavokewl here, the creator of Special; this was made with heart at 3 AM:)
