@@ -1,4 +1,4 @@
--- SpecialUI v1.0.0 (Sundae) - FULLY FIXED
+-- SpecialUI v1.0.0 (Sundae)
 -- Credits to xHeptc for Kavo UI Lib
 
 local SpecialUI = {}
@@ -79,54 +79,36 @@ end
 function SpecialUI:DraggingEnabled(frame, parent, instanceId)
     parent = parent or frame
     local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    local currentInput = nil
-    local dragTween = nil
-    
-    if not instanceId then instanceId = tostring(frame) end
-    if not DraggingConnections[instanceId] then DraggingConnections[instanceId] = {} end
+    local dragInput, mousePos, framePos
 
-    local function update(input)
-        if not parent or not parent.Parent then return end
-        local delta = input.Position - dragStart
-        local targetPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        if dragTween then dragTween:Cancel() end
-        dragTween = safeCall(tween.Create, tween, parent, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { Position = targetPos })
-        if dragTween then dragTween:Play() end
-    end
-
-    local conn1 = frame.InputBegan:Connect(function(i)
-        if not parent or not parent.Parent then return end
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+    local conn1 = frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
-            dragStart = i.Position
-            startPos = parent.Position
-            local conn = i.Changed:Connect(function()
-                if i.UserInputState == Enum.UserInputState.End then dragging = false end
+            mousePos = input.Position
+            framePos = parent.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
             end)
-            AddConnection(conn)
-            table.insert(DraggingConnections[instanceId], conn)
         end
     end)
     AddConnection(conn1)
-    table.insert(DraggingConnections[instanceId], conn1)
 
-    local conn2 = frame.InputChanged:Connect(function(i)
-        if not parent or not parent.Parent then return end
-        if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
-            currentInput = i
+    local conn2 = frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
         end
     end)
     AddConnection(conn2)
-    table.insert(DraggingConnections[instanceId], conn2)
 
-    local conn3 = input.InputChanged:Connect(function(i)
-        if not parent or not parent.Parent then return end
-        if dragging and i == currentInput then update(i) end
+    local conn3 = input.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            parent.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
     end)
     AddConnection(conn3)
-    table.insert(DraggingConnections[instanceId], conn3)
 end
 
 function SpecialUI:ToggleUI()
@@ -562,7 +544,6 @@ function SpecialUI.CreateLib(kavName, themeName)
             
             local Elements = {}
             
-            -- ============ FIXED BUTTON ============
             function Elements:NewButton(bname, tipInf, callback)
                 tipInf = tipInf or "Click this button"
                 bname = bname or "Button"
@@ -746,7 +727,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return ButtonFunction
             end
             
-            -- ============ FIXED TEXTBOX ============
             function Elements:NewTextBox(tname, tTip, callback)
                 tname = tname or "TextBox"
                 tTip = tTip or "Enter a value"
@@ -935,7 +915,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return TextBoxFunction
             end
             
-            -- ============ FIXED TOGGLE ============
             function Elements:NewToggle(tname, nTip, callback)
                 tname = tname or "Toggle"
                 nTip = nTip or "Toggle state"
@@ -1161,7 +1140,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return ToggleFunction
             end
             
-            -- ============ FIXED SLIDER ============
             function Elements:NewSlider(slidInf, slidTip, maxvalue, minvalue, callback)
                 slidInf = slidInf or "Slider"
                 slidTip = slidTip or "Slider tip here"
@@ -1175,7 +1153,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local viewInfo = Instance.new("ImageButton")
                 local sliderBtn = Instance.new("TextButton")
                 local sliderBtnCorner = Instance.new("UICorner")
-                local UIListLayout = Instance.new("UIListLayout")
                 local sliderDrag = Instance.new("Frame")
                 local sliderDragCorner = Instance.new("UICorner")
                 local write = Instance.new("ImageLabel")
@@ -1184,6 +1161,8 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local mouse = game.Players.LocalPlayer:GetMouse()
                 local uis = game:GetService("UserInputService")
                 local currentValue = minvalue
+                local moveConn = nil
+                local releaseConn = nil
                 
                 sliderElement.Name = "sliderElement"
                 sliderElement.Parent = sectionInners
@@ -1324,14 +1303,14 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local sliderDownConn = sliderBtn.MouseButton1Down:Connect(startDrag)
                 AddConnection(sliderDownConn)
                 
-                local moveConn = uis.InputChanged:Connect(function(input)
+                moveConn = uis.InputChanged:Connect(function(input)
                     if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                         updateSlider(input)
                     end
                 end)
                 AddConnection(moveConn)
                 
-                local releaseConn = uis.InputEnded:Connect(function(input)
+                releaseConn = uis.InputEnded:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 and isDragging then
                         isDragging = false
                         val.TextTransparency = 1
@@ -1416,7 +1395,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return SliderFunction
             end
             
-            -- ============ FIXED DROPDOWN ============
             function Elements:NewDropdown(dropname, dropinf, list, callback)
                 local DropFunction = {}
                 dropname = dropname or "Dropdown"
@@ -1845,7 +1823,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return DropFunction
             end
             
-            -- ============ FIXED KEYBIND ============
             function Elements:NewKeybind(keytext, keyinf, first, callback)
                 keytext = keytext or "KeybindText"
                 keyinf = keyinf or "Keybind info"
@@ -2074,7 +2051,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return KeybindFunction
             end
             
-            -- ============ FIXED COLORPICKER ============
             function Elements:NewColorPicker(colText, colInf, defcolor, callback)
                 colText = colText or "ColorPicker"
                 callback = callback or function() end
@@ -2545,7 +2521,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return ColorPickerFunction
             end
             
-            -- ============ FIXED LABEL ============
             function Elements:NewLabel(title)
                 local label = Instance.new("TextLabel")
                 local UICorner = Instance.new("UICorner")
@@ -2588,7 +2563,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return labelFunc
             end
             
-            -- ============ FIXED TOGGLE UI ============
             function Elements:NewToggleUI(tname, nTip)
                 tname = tname or "Toggle UI"
                 nTip = nTip or "Click to toggle the UI"
@@ -2637,7 +2611,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                         vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
                         return true
                     end
-                    -- Fallback: just toggle visibility
                     SpecialUI:ToggleUI()
                     return true
                 end
@@ -2699,11 +2672,10 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return ToggleUIFunction
             end
             
-            -- ============ FIXED HOMECARD (SYMMETRICAL, SQUARE AVATAR, MAX 2 BUTTONS) ============
             function Elements:NewHomeCard(config)
                 config = config or {}
                 local buttons = config.buttons or {}
-                local numButtons = math.min(#buttons, 2) -- MAX 2 BUTTONS
+                local numButtons = math.min(#buttons, 2)
                 
                 local mainRect = Instance.new("Frame")
                 mainRect.Parent = sectionInners
@@ -2717,7 +2689,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 rectCorner.CornerRadius = UDim.new(0, 8)
                 rectCorner.Parent = mainRect
                 
-                -- SQUARE AVATAR (not circle)
                 local avatarSquare = Instance.new("Frame")
                 avatarSquare.Parent = mainRect
                 avatarSquare.Position = UDim2.new(0.03, 0, 0.1, 0)
@@ -2726,7 +2697,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 avatarSquare.BackgroundTransparency = 0.3
                 
                 local avatarCorner = Instance.new("UICorner")
-                avatarCorner.CornerRadius = UDim.new(0, 8) -- SQUARE CORNER, NOT CIRCLE
+                avatarCorner.CornerRadius = UDim.new(0, 8)
                 avatarCorner.Parent = avatarSquare
                 
                 local avatarImage = Instance.new("ImageLabel")
@@ -2773,7 +2744,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 usernameText.TextSize = 24
                 usernameText.TextXAlignment = Enum.TextXAlignment.Left
                 
-                -- BUTTON FRAME - SYMMETRICAL, no padding, equal spacing
                 local buttonFrame = Instance.new("Frame")
                 buttonFrame.Parent = mainRect
                 buttonFrame.BackgroundTransparency = 1
@@ -2793,7 +2763,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                     buttonFrame.Size = UDim2.new(0, 120, 0, 30)
                 end
                 
-                -- SYMMETRICAL LAYOUT - Equal spacing, centered
                 local buttonLayout = Instance.new("UIListLayout")
                 buttonLayout.Parent = buttonFrame
                 buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -2801,10 +2770,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
                 buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
                 
-                -- Calculate equal spacing
                 local buttonWidth = numButtons == 1 and 120 or 100
-                local totalWidth = numButtons * buttonWidth + (numButtons - 1) * 10
-                local startX = (220 - totalWidth) / 2
                 
                 for i, btnData in ipairs(buttons) do
                     if i <= 2 then
@@ -2813,7 +2779,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                         btn.BackgroundColor3 = themeList.SchemeColor
                         btn.BackgroundTransparency = 0.2
                         btn.Size = UDim2.new(0, buttonWidth, 0, 28)
-                        btn.Position = UDim2.new(0, startX + (i-1) * (buttonWidth + 10), 0, 0)
                         btn.Font = Enum.Font.FredokaOne
                         btn.Text = btnData.text or "Button"
                         btn.TextColor3 = themeList.TextColor
@@ -2866,7 +2831,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return HomeFunction
             end
             
-            -- ============ FIXED CONSOLE PLAYER (SCROLLABLE) ============
             function Elements:NewConsolePlayer()
                 local consoleFrame = Instance.new("Frame")
                 consoleFrame.Parent = sectionInners
@@ -2969,19 +2933,16 @@ function SpecialUI.CreateLib(kavName, themeName)
         return Sections
     end
     
-    -- ============ REWORKED DROPDOWN TAB ============
     function Tabs:NewDropdownTab(tabName, tabInf, options, callback)
         tabName = tabName or "Dropdown"
         options = options or {}
         callback = callback or function() end
         
-        -- Create the main tab with the dropdown
         local mainTab = Tabs:NewTab(tabName)
         local section = mainTab:NewSection(tabName)
         local optionPages = {}
         local currentOption = nil
         
-        -- Create hidden tabs for each option
         for _, optionName in ipairs(options) do
             local optionTab = Tabs:NewTab(optionName)
             optionPages[optionName] = optionTab
@@ -2991,7 +2952,6 @@ function SpecialUI.CreateLib(kavName, themeName)
             end
         end
         
-        -- Dropdown that switches tabs
         local dropFunc = section:NewDropdown(tabName, tabInf or "Select an option", options, function(selected)
             for name, tab in pairs(optionPages) do
                 local page = Pages:FindFirstChild(name)
@@ -3003,7 +2963,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local page = Pages:FindFirstChild(selected)
                 if page and page:IsA("ScrollingFrame") then
                     page.Visible = true
-                    -- Update tab highlighting
                     for _, v in pairs(tabFrames:GetChildren()) do
                         if v:IsA("TextButton") then
                             if v.Name == selected .. "TabButton" then
@@ -3019,7 +2978,6 @@ function SpecialUI.CreateLib(kavName, themeName)
             callback(selected)
         end)
         
-        -- Select first option by default if available
         if #options > 0 then
             task.spawn(function()
                 task.wait(0.1)
@@ -3046,7 +3004,6 @@ function SpecialUI.CreateLib(kavName, themeName)
     return Tabs
 end
 
--- ============ FIXED DESTROY ============
 function SpecialUI:Destroy()
     for _, conn in pairs(ActiveConnections) do
         if conn and typeof(conn) == "RBXScriptConnection" then
