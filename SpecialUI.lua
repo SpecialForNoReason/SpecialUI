@@ -1,6 +1,3 @@
--- SpecialUI v1.0.0 (Sundae)
--- Credits to xHeptc for Kavo UI Lib
-
 local SpecialUI = {}
 
 local tween = game:GetService("TweenService")
@@ -44,7 +41,6 @@ local ThemeStyles = {
     Fire = { SchemeColor = Color3.fromRGB(255, 80, 0), Background = Color3.fromRGB(35, 15, 10), Header = Color3.fromRGB(25, 10, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 25, 15) }
 }
 
--- Set initial theme reference to prevent nil index errors
 local themeList = table.clone(ThemeStyles.Dark)
 
 local function safeCall(func, ...)
@@ -78,39 +74,65 @@ local function GetTheme(theme)
     return theme or ThemeStyles.Dark
 end
 
-function SpecialUI:DraggingEnabled(frame, parent, instanceId)
+function SpecialUI:DraggingEnabled(frame, parent)
     parent = parent or frame
     local dragging = false
-    local dragInput, mousePos, framePos
+    local dragStart = nil
+    local startPos = nil
+    local currentInput = nil
+    local instanceId = tostring(frame)
 
-    local conn1 = frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if not DraggingConnections[instanceId] then
+        DraggingConnections[instanceId] = {}
+    end
+
+    local function update(inputObj)
+        if not parent or not parent.Parent then return end
+        local delta = inputObj.Position - dragStart
+        parent.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+
+    local conn1 = frame.InputBegan:Connect(function(inputObj)
+        if not parent or not parent.Parent then return end
+        if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            mousePos = input.Position
-            framePos = parent.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+            dragStart = inputObj.Position
+            startPos = parent.Position
         end
     end)
     AddConnection(conn1)
+    table.insert(DraggingConnections[instanceId], conn1)
 
-    local conn2 = frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
+    local conn2 = frame.InputChanged:Connect(function(inputObj)
+        if not parent or not parent.Parent then return end
+        if inputObj.UserInputType == Enum.UserInputType.MouseMovement or inputObj.UserInputType == Enum.UserInputType.Touch then
+            currentInput = inputObj
         end
     end)
     AddConnection(conn2)
+    table.insert(DraggingConnections[instanceId], conn2)
 
-    local conn3 = input.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - mousePos
-            parent.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+    local conn3 = input.InputChanged:Connect(function(inputObj)
+        if not parent or not parent.Parent then return end
+        if dragging and inputObj == currentInput then
+            update(inputObj)
         end
     end)
     AddConnection(conn3)
+    table.insert(DraggingConnections[instanceId], conn3)
+
+    local conn4 = input.InputEnded:Connect(function(inputObj)
+        if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    AddConnection(conn4)
+    table.insert(DraggingConnections[instanceId], conn4)
 end
 
 function SpecialUI:ToggleUI()
@@ -183,6 +205,26 @@ function SpecialUI:ThemeExists(theme)
     return ThemeStyles[theme] ~= nil
 end
 
+function SpecialUI:SelectTab(tabName)
+    if not Pages then return end
+    local page = Pages:FindFirstChild(tabName)
+    if page and page:IsA("ScrollingFrame") then
+        for _, v in pairs(Pages:GetChildren()) do
+            if v:IsA("ScrollingFrame") then v.Visible = false end
+        end
+        page.Visible = true
+        for _, v in pairs(tabFrames:GetChildren()) do
+            if v:IsA("TextButton") then
+                if v.Name == tabName.."TabButton" then
+                    Utility:TweenObject(v, {BackgroundTransparency = 0}, 0.2)
+                else
+                    Utility:TweenObject(v, {BackgroundTransparency = 1}, 0.2)
+                end
+            end
+        end
+    end
+end
+
 function SpecialUI.CreateLib(kavName, themeName)
     if ThemeEvent then safeCall(ThemeEvent.Destroy, ThemeEvent); ThemeEvent = nil end
     ThemeEvent = Instance.new("BindableEvent")
@@ -195,7 +237,6 @@ function SpecialUI.CreateLib(kavName, themeName)
     CurrentThemeName = type(themeName) == "string" and themeName or "Custom"
     kavName = kavName or "Library"
     LibName = tostring(math.random(1000, 9999)) .. tostring(math.random(1000, 9999))
-    local instanceId = tostring(os.clock()) .. tostring(math.random(9999))
     
     for i,v in pairs(game.CoreGui:GetChildren()) do
         if v:IsA("ScreenGui") and v.Name == kavName then safeCall(v.Destroy, v) end
@@ -213,6 +254,7 @@ function SpecialUI.CreateLib(kavName, themeName)
     MainInstance.Name = "Main"
     MainInstance.Parent = ScreenGui
     MainInstance.BackgroundColor3 = themeList.Background
+    MainInstance.Active = true
     MainInstance.ClipsDescendants = true
     MainInstance.Position = UDim2.new(0.3365, 0, 0.2755, 0)
     MainInstance.Size = UDim2.new(0, 525, 0, 318)
@@ -226,6 +268,7 @@ function SpecialUI.CreateLib(kavName, themeName)
         MainHeader.Name = "MainHeader"
         MainHeader.Parent = MainInstance
         MainHeader.BackgroundColor3 = themeList.Header
+        MainHeader.Active = true
         MainHeader.Size = UDim2.new(0, 525, 0, 29)
     end
     
@@ -339,7 +382,7 @@ function SpecialUI.CreateLib(kavName, themeName)
         blurFrame.ZIndex = 999
     end
     
-    SpecialUI:DraggingEnabled(MainHeader, MainInstance, instanceId)
+    SpecialUI:DraggingEnabled(MainHeader, MainInstance)
     
     local function UpdateAllThemeColors()
         if not MainInstance or not MainInstance.Parent then return end
@@ -389,7 +432,7 @@ function SpecialUI.CreateLib(kavName, themeName)
         page.Name = tabName
         page.Parent = Pages
         page.Active = true
-        page.BackgroundColor3 = themeList.Background
+        page.BackgroundTransparency = 1 -- Transparents allow inheriting main BG
         page.BorderSizePixel = 0
         page.Position = UDim2.new(0, 0, -0.00372, 0)
         page.Size = UDim2.new(1, 0, 1, 0)
@@ -453,7 +496,6 @@ function SpecialUI.CreateLib(kavName, themeName)
         
         local function UpdateTabTheme()
             if not page or not page.Parent then return end
-            page.BackgroundColor3 = themeList.Background
             page.ScrollBarImageColor3 = Color3.fromRGB(math.clamp(themeList.SchemeColor.R * 255 - 16, 0, 255), math.clamp(themeList.SchemeColor.G * 255 - 15, 0, 255), math.clamp(themeList.SchemeColor.B * 255 - 28, 0, 255))
             if tabButton and tabButton.Parent then
                 tabButton.TextColor3 = themeList.TextColor
@@ -479,7 +521,7 @@ function SpecialUI.CreateLib(kavName, themeName)
             
             sectionFrame.Name = "sectionFrame"
             sectionFrame.Parent = page
-            sectionFrame.BackgroundColor3 = themeList.Background
+            sectionFrame.BackgroundTransparency = 1
             sectionFrame.BorderSizePixel = 0
             
             sectionlistoknvm.Name = "sectionlistoknvm"
@@ -540,7 +582,6 @@ function SpecialUI.CreateLib(kavName, themeName)
             
             local function UpdateSectionTheme()
                 if not sectionFrame or not sectionFrame.Parent then return end
-                sectionFrame.BackgroundColor3 = themeList.Background
                 if sectionHead then sectionHead.BackgroundColor3 = themeList.SchemeColor end
                 if sectionName then sectionName.TextColor3 = themeList.TextColor end
             end
@@ -1865,11 +1906,11 @@ function SpecialUI.CreateLib(kavName, themeName)
                         waitingForKey = true
                         togName_2.Text = ". . ."
                         local keyPressed
-                        local function onInputBegan(input, processed)
+                        local function onInputBegan(inputObj, processed)
                             if not processed and waitingForKey then
-                                if input.KeyCode ~= Enum.KeyCode.Unknown then
-                                    keyPressed = input.KeyCode.Name
-                                    oldKey = input.KeyCode.Name
+                                if inputObj.KeyCode ~= Enum.KeyCode.Unknown then
+                                    keyPressed = inputObj.KeyCode.Name
+                                    oldKey = inputObj.KeyCode.Name
                                     togName_2.Text = oldKey
                                     waitingForKey = false
                                 end
@@ -2347,10 +2388,10 @@ function SpecialUI.CreateLib(kavName, themeName)
                     return math.acos(math.cos(X * math.pi)) / math.pi
                 end
                 
-                local function updateColor(input)
+                local function updateColor(inputObj)
                     if colorpicker then
-                        local x = input.Position.X - rgb.AbsolutePosition.X
-                        local y = input.Position.Y - rgb.AbsolutePosition.Y
+                        local x = inputObj.Position.X - rgb.AbsolutePosition.X
+                        local y = inputObj.Position.Y - rgb.AbsolutePosition.Y
                         local maxX, maxY = rgb.AbsoluteSize.X, rgb.AbsoluteSize.Y
                         if maxX <= 0 or maxY <= 0 then return end
                         
@@ -2366,7 +2407,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                         colorCurrent.BackgroundColor3 = realcolor
                         safeCall(callback, realcolor)
                     elseif darknesss then
-                        local y = input.Position.Y - dark.AbsolutePosition.Y
+                        local y = inputObj.Position.Y - dark.AbsolutePosition.Y
                         local maxY = dark.AbsoluteSize.Y
                         if maxY <= 0 then return end
                         
@@ -2433,31 +2474,31 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local rainbowClickConn = onrainbow.MouseButton1Click:Connect(togglerainbow)
                 AddConnection(rainbowClickConn)
                 
-                local rgbDownConn = rgb.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local rgbDownConn = rgb.InputBegan:Connect(function(inputObj)
+                    if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
                         colorpicker = true
-                        updateColor(input)
+                        updateColor(inputObj)
                     end
                 end)
                 AddConnection(rgbDownConn)
                 
-                local darkDownConn = dark.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local darkDownConn = dark.InputBegan:Connect(function(inputObj)
+                    if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
                         darknesss = true
-                        updateColor(input)
+                        updateColor(inputObj)
                     end
                 end)
                 AddConnection(darkDownConn)
                 
-                local pickMoveConn = uis.InputChanged:Connect(function(input)
-                    if (colorpicker or darknesss) and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        updateColor(input)
+                local pickMoveConn = uis.InputChanged:Connect(function(inputObj)
+                    if (colorpicker or darknesss) and (inputObj.UserInputType == Enum.UserInputType.MouseMovement or inputObj.UserInputType == Enum.UserInputType.Touch) then
+                        updateColor(inputObj)
                     end
                 end)
                 AddConnection(pickMoveConn)
                 
-                local pickEndConn = uis.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local pickEndConn = uis.InputEnded:Connect(function(inputObj)
+                    if inputObj.UserInputType == Enum.UserInputType.MouseButton1 or inputObj.UserInputType == Enum.UserInputType.Touch then
                         colorpicker = false
                         darknesss = false
                     end
@@ -2771,7 +2812,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local buttonFrame = Instance.new("Frame")
                 buttonFrame.Parent = rightFrame
                 buttonFrame.BackgroundTransparency = 1
-                buttonFrame.Size = UDim2.new(1, 0, 0, 28)
                 buttonFrame.LayoutOrder = 3
                 
                 local buttonLayout = Instance.new("UIListLayout")
@@ -2780,9 +2820,10 @@ function SpecialUI.CreateLib(kavName, themeName)
                 buttonLayout.FillDirection = Enum.FillDirection.Horizontal
                 buttonLayout.Padding = UDim.new(0, 8)
                 buttonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+                buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
                 
-                local spaceReserved = (numButtons - 1) * 8
-                local buttonWidth = numButtons > 0 and ((227 - spaceReserved) / numButtons) or 0
+                local buttonWidth = 100
+                buttonFrame.Size = UDim2.new(0, numButtons * buttonWidth + (numButtons - 1) * 8, 0, 28)
                 
                 for i, btnData in ipairs(buttons) do
                     if i <= 2 then
@@ -2807,7 +2848,14 @@ function SpecialUI.CreateLib(kavName, themeName)
                         btn.MouseLeave:Connect(function()
                             tween:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.2}):Play()
                         end)
-                        btn.MouseButton1Click:Connect(btnData.callback or function() end)
+                        
+                        btn.MouseButton1Click:Connect(function()
+                            if btnData.redirect then
+                                SpecialUI:SelectTab(btnData.redirect)
+                            elseif btnData.callback then
+                                safeCall(btnData.callback)
+                            end
+                        end)
                     end
                 end
                 
@@ -2843,7 +2891,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return HomeFunction
             end
             
-            function Elements:NewConsolePlayer()
+            function Elements:NewConsolePlayer(captureLogService)
                 local consoleFrame = Instance.new("Frame")
                 consoleFrame.Parent = sectionInners
                 consoleFrame.BackgroundColor3 = themeList.Background
@@ -2921,6 +2969,22 @@ function SpecialUI.CreateLib(kavName, themeName)
                 PrintToConsole("SpecialUI Sundae v1.0.0 loaded!", themeList.SchemeColor)
                 PrintToConsole("Welcome " .. game.Players.LocalPlayer.Name .. "!", themeList.TextColor)
                 
+                if captureLogService then
+                    local LogService = game:GetService("LogService")
+                    local logConn = LogService.MessageOut:Connect(function(message, messageType)
+                        if messageType == Enum.MessageType.MessageOutput then
+                            PrintToConsole(message, themeList.TextColor)
+                        elseif messageType == Enum.MessageType.MessageInfo then
+                            PrintToConsole("ℹ️ " .. message, Color3.fromRGB(100, 200, 255))
+                        elseif messageType == Enum.MessageType.MessageWarning then
+                            PrintToConsole("⚠️ " .. message, Color3.fromRGB(255, 200, 0))
+                        elseif messageType == Enum.MessageType.MessageError then
+                            PrintToConsole("❌ " .. message, Color3.fromRGB(255, 50, 50))
+                        end
+                    end)
+                    AddConnection(logConn)
+                end
+                
                 local ConsoleFunction = {}
                 function ConsoleFunction:Print(message, color)
                     PrintToConsole(message, color or themeList.TextColor)
@@ -2953,78 +3017,6 @@ function SpecialUI.CreateLib(kavName, themeName)
             return Elements
         end
         return Sections
-    end
-    
-    function Tabs:NewDropdownTab(tabName, tabInf, options, callback)
-        tabName = tabName or "Dropdown"
-        options = options or {}
-        callback = callback or function() end
-        
-        local mainTab = Tabs:NewTab(tabName)
-        local selectorSection = mainTab:NewSection("Select Category", false)
-        
-        local sectionsByOption = {}
-        for _, opt in ipairs(options) do
-            sectionsByOption[opt] = {}
-        end
-        
-        local currentOption = options[1] or ""
-        
-        local SubTabs = {}
-        
-        function SubTabs:NewSectionInOption(optionName, sectionName)
-            local sec = mainTab:NewSection(sectionName or "Section", false)
-            
-            if sectionsByOption[optionName] then
-                table.insert(sectionsByOption[optionName], sec)
-            else
-                sectionsByOption[optionName] = {sec}
-            end
-            
-            if optionName ~= currentOption then
-                if sec._frame then sec._frame.Visible = false end
-            end
-            
-            return sec
-        end
-        
-        local dropFunc = selectorSection:NewDropdown("Category", tabInf or "Select a category", options, function(selected)
-            currentOption = selected
-            for optName, secList in pairs(sectionsByOption) do
-                local isVisible = (optName == selected)
-                for _, sec in ipairs(secList) do
-                    if sec._frame then
-                        sec._frame.Visible = isVisible
-                    end
-                end
-            end
-            
-            task.spawn(function()
-                task.wait()
-                if mainTab._updateSize then
-                    mainTab._updateSize()
-                end
-            end)
-            
-            safeCall(callback, selected)
-        end)
-        
-        if #options > 0 then
-            task.spawn(function()
-                task.wait(0.18)
-                dropFunc.Refresh(options)
-            end)
-        end
-        
-        function SubTabs:GetOption(optionName)
-            local MockTab = {}
-            function MockTab:NewSection(sectionName)
-                return SubTabs:NewSectionInOption(optionName, sectionName)
-            end
-            return MockTab
-        end
-        
-        return SubTabs
     end
     
     return Tabs
