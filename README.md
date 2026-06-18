@@ -61,17 +61,8 @@ all of the themes:
 local Tab = Window:NewTab("ExampleTab")
 ```
 
----
+```
 
-# 4: Creating Dropdown Tabs (might not work)
-```
-local dropdownTabs = Tabs:NewDropdownTab("ExampleSettings", "Choose a settings page", 
-    {"Visual", "Audio", "Gameplay"}, 
-    function(selected)
-        print("Switched to: " .. selected)
-    end
-)
-```
 ---
 
 # 5: Creating Sections
