@@ -1,5 +1,5 @@
+-- SpecialUI v1.0.0 (Sundae)
 -- Credits to xHeptc for Kavo UI Lib
--- SpecialUI Lib v0.1-Preview3
 
 local SpecialUI = {}
 
@@ -15,7 +15,14 @@ local ActiveObjects = {}
 local DraggingConnections = {}
 local ThemeEvent = nil
 local MainInstance = nil
-local LibName = tostring(math.random(1000, 9999)) .. tostring(math.random(1000, 9999))
+local LibName = nil
+local CurrentThemeName = "Dark"
+local CurrentThemeTable = nil
+local Pages = nil
+local tabFrames = nil
+local infoContainer = nil
+local blurFrame = nil
+local themeList = nil
 
 local function safeCall(func, ...)
     local success, result = pcall(func, ...)
@@ -42,28 +49,31 @@ function Utility:TweenObject(obj, properties, duration, ...)
 end
 
 local ThemeStyles = {
-    Default = { SchemeColor = Color3.fromRGB(74, 99, 135), Background = Color3.fromRGB(36, 37, 43), Header = Color3.fromRGB(28, 29, 34), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(32, 32, 38) },
     Dark = { SchemeColor = Color3.fromRGB(64, 64, 64), Background = Color3.fromRGB(0, 0, 0), Header = Color3.fromRGB(0, 0, 0), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 20) },
-    Light = { SchemeColor = Color3.fromRGB(150, 150, 150), Background = Color3.fromRGB(255,255,255), Header = Color3.fromRGB(200, 200, 200), TextColor = Color3.fromRGB(0,0,0), ElementColor = Color3.fromRGB(224, 224, 224) },
+    Light = { SchemeColor = Color3.fromRGB(200, 200, 200), Background = Color3.fromRGB(255,255,255), Header = Color3.fromRGB(200, 200, 200), TextColor = Color3.fromRGB(0,0,0), ElementColor = Color3.fromRGB(224, 224, 224) },
+    Grey = { SchemeColor = Color3.fromRGB(150, 150, 150), Background = Color3.fromRGB(30, 30, 35), Header = Color3.fromRGB(20, 20, 25), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 45, 50) },
     Blood = { SchemeColor = Color3.fromRGB(227, 27, 27), Background = Color3.fromRGB(10, 10, 10), Header = Color3.fromRGB(5, 5, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 20) },
     Grape = { SchemeColor = Color3.fromRGB(166, 71, 214), Background = Color3.fromRGB(64, 50, 71), Header = Color3.fromRGB(36, 28, 41), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(74, 58, 84) },
     Ocean = { SchemeColor = Color3.fromRGB(86, 76, 251), Background = Color3.fromRGB(26, 32, 58), Header = Color3.fromRGB(38, 45, 71), TextColor = Color3.fromRGB(200, 200, 200), ElementColor = Color3.fromRGB(38, 45, 71) },
-    Midnight = { SchemeColor = Color3.fromRGB(26, 189, 158), Background = Color3.fromRGB(44, 62, 82), Header = Color3.fromRGB(57, 81, 105), TextColor = Color3.fromRGB(255, 255, 255), ElementColor = Color3.fromRGB(52, 74, 95) },
+    MidNight = { SchemeColor = Color3.fromRGB(26, 189, 158), Background = Color3.fromRGB(44, 62, 82), Header = Color3.fromRGB(57, 81, 105), TextColor = Color3.fromRGB(255, 255, 255), ElementColor = Color3.fromRGB(52, 74, 95) },
+    Night = { SchemeColor = Color3.fromRGB(100, 100, 200), Background = Color3.fromRGB(10, 10, 20), Header = Color3.fromRGB(5, 5, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 35) },
+    Sunset = { SchemeColor = Color3.fromRGB(255, 140, 0), Background = Color3.fromRGB(40, 20, 25), Header = Color3.fromRGB(30, 15, 20), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(55, 30, 35) },
     Sentinel = { SchemeColor = Color3.fromRGB(230, 35, 69), Background = Color3.fromRGB(32, 32, 32), Header = Color3.fromRGB(24, 24, 24), TextColor = Color3.fromRGB(119, 209, 138), ElementColor = Color3.fromRGB(24, 24, 24) },
     Synapse = { SchemeColor = Color3.fromRGB(46, 48, 43), Background = Color3.fromRGB(13, 15, 12), Header = Color3.fromRGB(36, 38, 35), TextColor = Color3.fromRGB(152, 99, 53), ElementColor = Color3.fromRGB(24, 24, 24) },
-    Serpent = { SchemeColor = Color3.fromRGB(0, 166, 58), Background = Color3.fromRGB(31, 41, 43), Header = Color3.fromRGB(22, 29, 31), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(22, 29, 31) },
     Amoled = { SchemeColor = Color3.fromRGB(100, 100, 100), Background = Color3.fromRGB(0, 0, 0), Header = Color3.fromRGB(0, 0, 0), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(10, 10, 10) },
     Lavender = { SchemeColor = Color3.fromRGB(180, 136, 255), Background = Color3.fromRGB(25, 20, 35), Header = Color3.fromRGB(20, 15, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 45) },
     Crimson = { SchemeColor = Color3.fromRGB(220, 20, 60), Background = Color3.fromRGB(15, 15, 20), Header = Color3.fromRGB(10, 10, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(20, 20, 25) },
     Forest = { SchemeColor = Color3.fromRGB(34, 139, 34), Background = Color3.fromRGB(20, 30, 20), Header = Color3.fromRGB(15, 25, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(25, 35, 25) },
-    Amber = { SchemeColor = Color3.fromRGB(255, 126, 0), Background = Color3.fromRGB(25, 20, 15), Header = Color3.fromRGB(20, 15, 10), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 20) }
+    Amber = { SchemeColor = Color3.fromRGB(255, 126, 0), Background = Color3.fromRGB(25, 20, 15), Header = Color3.fromRGB(20, 15, 10), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 20) },
+    Ice = { SchemeColor = Color3.fromRGB(0, 200, 255), Background = Color3.fromRGB(20, 25, 35), Header = Color3.fromRGB(15, 20, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 40, 55) },
+    Fire = { SchemeColor = Color3.fromRGB(255, 80, 0), Background = Color3.fromRGB(35, 15, 10), Header = Color3.fromRGB(25, 10, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 25, 15) }
 }
 
 local function GetTheme(theme)
     if type(theme) == "string" then
-        return ThemeStyles[theme] or ThemeStyles.Default
+        return ThemeStyles[theme] or ThemeStyles.Dark
     end
-    return theme or ThemeStyles.Default
+    return theme or ThemeStyles.Dark
 end
 
 function SpecialUI:DraggingEnabled(frame, parent, instanceId)
@@ -141,6 +151,53 @@ function SpecialUI.DestroyUI()
     ActiveConnections = {}
     DraggingConnections = {}
     ActiveObjects = {}
+    Pages = nil
+    tabFrames = nil
+    infoContainer = nil
+    blurFrame = nil
+    themeList = nil
+end
+
+function SpecialUI:SetTheme(theme)
+    local newTheme
+    if type(theme) == "string" then
+        if ThemeStyles[theme] then
+            newTheme = ThemeStyles[theme]
+            CurrentThemeName = theme
+            CurrentThemeTable = nil
+        else
+            warn("SpecialUI: Theme '" .. theme .. "' not found!")
+            return
+        end
+    elseif type(theme) == "table" then
+        newTheme = theme
+        CurrentThemeName = "Custom"
+        CurrentThemeTable = theme
+    else
+        warn("SpecialUI: Invalid theme type!")
+        return
+    end
+    for key, value in pairs(newTheme) do
+        themeList[key] = value
+    end
+    if ThemeEvent then ThemeEvent:Fire() end
+end
+
+function SpecialUI:GetTheme()
+    if CurrentThemeTable then return CurrentThemeTable end
+    return CurrentThemeName
+end
+
+function SpecialUI:GetThemes()
+    local themeNames = {}
+    for name, _ in pairs(ThemeStyles) do
+        table.insert(themeNames, name)
+    end
+    return themeNames
+end
+
+function SpecialUI:ThemeExists(theme)
+    return ThemeStyles[theme] ~= nil
 end
 
 function SpecialUI.CreateLib(kavName, themeName)
@@ -148,8 +205,10 @@ function SpecialUI.CreateLib(kavName, themeName)
     ThemeEvent = Instance.new("BindableEvent")
     AddConnection(ThemeEvent.Event:Connect(function() end))
     
-    local themeList = GetTheme(themeName)
+    themeList = GetTheme(themeName)
+    CurrentThemeName = type(themeName) == "string" and themeName or "Custom"
     kavName = kavName or "Library"
+    LibName = tostring(math.random(1000, 9999)) .. tostring(math.random(1000, 9999))
     local instanceId = tostring(os.clock()) .. tostring(math.random(9999))
     
     for i,v in pairs(game.CoreGui:GetChildren()) do
@@ -248,7 +307,7 @@ function SpecialUI.CreateLib(kavName, themeName)
         coverup_2.Size = UDim2.new(0, 7, 0, 289)
     end
     
-    local tabFrames = safeCall(Instance.new, "Frame")
+    tabFrames = safeCall(Instance.new, "Frame")
     if tabFrames then
         tabFrames.Name = "tabFrames"
         tabFrames.Parent = MainSide
@@ -269,10 +328,10 @@ function SpecialUI.CreateLib(kavName, themeName)
         pages.Size = UDim2.new(0, 360, 0, 269)
     end
     
-    local Pages = safeCall(Instance.new, "Folder")
+    Pages = safeCall(Instance.new, "Folder")
     if Pages then Pages.Name = "Pages"; Pages.Parent = pages end
     
-    local infoContainer = safeCall(Instance.new, "Frame")
+    infoContainer = safeCall(Instance.new, "Frame")
     if infoContainer then
         infoContainer.Name = "infoContainer"
         infoContainer.Parent = MainInstance
@@ -282,7 +341,7 @@ function SpecialUI.CreateLib(kavName, themeName)
         infoContainer.Size = UDim2.new(0, 368, 0, 33)
     end
     
-    local blurFrame = safeCall(Instance.new, "Frame")
+    blurFrame = safeCall(Instance.new, "Frame")
     if blurFrame then
         blurFrame.Name = "blurFrame"
         blurFrame.Parent = pages
@@ -341,7 +400,7 @@ function SpecialUI.CreateLib(kavName, themeName)
             end
         end
         
-        page.Name = "Page"
+        page.Name = tabName
         page.Parent = Pages
         page.Active = true
         page.BackgroundColor3 = themeList.Background
@@ -1840,7 +1899,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 moreInfo.Size = UDim2.new(0, 353, 0, 33)
                 moreInfo.ZIndex = 9
                 moreInfo.Font = Enum.Font.FredokaOne
-                moreInfo.RichText = true
                 moreInfo.Text = "  " .. keyinf
                 moreInfo.TextColor3 = themeList.TextColor
                 moreInfo.TextSize = 14
@@ -2474,11 +2532,474 @@ function SpecialUI.CreateLib(kavName, themeName)
                 return labelFunc
             end
             
+            function Elements:NewToggleUI(tname, nTip)
+                tname = tname or "Toggle UI"
+                nTip = nTip or "Click to toggle the UI"
+                
+                local toggleElement = Instance.new("TextButton")
+                local UICorner = Instance.new("UICorner")
+                local togName = Instance.new("TextLabel")
+                
+                toggleElement.Name = "toggleUIElement"
+                toggleElement.Parent = sectionInners
+                toggleElement.BackgroundColor3 = themeList.ElementColor
+                toggleElement.ClipsDescendants = true
+                toggleElement.Size = UDim2.new(0, 352, 0, 33)
+                toggleElement.AutoButtonColor = false
+                toggleElement.Font = Enum.Font.FredokaOne
+                toggleElement.Text = ""
+                toggleElement.TextColor3 = Color3.fromRGB(0, 0, 0)
+                toggleElement.TextSize = 14
+                
+                UICorner.CornerRadius = UDim.new(0, 4)
+                UICorner.Parent = toggleElement
+                
+                togName.Name = "togName"
+                togName.Parent = toggleElement
+                togName.BackgroundTransparency = 1
+                togName.Position = UDim2.new(0.05, 0, 0.2727, 0)
+                togName.Size = UDim2.new(0, 300, 0, 14)
+                togName.Font = Enum.Font.FredokaOne
+                togName.Text = "🔘 " .. tname
+                togName.RichText = true
+                togName.TextColor3 = themeList.TextColor
+                togName.TextSize = 14
+                togName.TextXAlignment = Enum.TextXAlignment.Left
+                
+                local ms = game.Players.LocalPlayer:GetMouse()
+                local btn = toggleElement
+                local isHovering = false
+                
+                local function PressF()
+                    local success, vim = pcall(function()
+                        return game:GetService("VirtualInputManager")
+                    end)
+                    if success and vim then
+                        vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+                        task.wait(0.05)
+                        vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+                        return true
+                    end
+                    local success2 = pcall(function()
+                        local uis = game:GetService("UserInputService")
+                        local fakeDown = {
+                            KeyCode = Enum.KeyCode.F,
+                            UserInputType = Enum.UserInputType.Keyboard,
+                            Position = Vector2.new(0, 0),
+                            UserInputState = Enum.UserInputState.Begin
+                        }
+                        uis.InputBegan:Fire(fakeDown, false)
+                        task.wait(0.05)
+                        local fakeUp = {
+                            KeyCode = Enum.KeyCode.F,
+                            UserInputType = Enum.UserInputType.Keyboard,
+                            Position = Vector2.new(0, 0),
+                            UserInputState = Enum.UserInputState.End
+                        }
+                        uis.InputEnded:Fire(fakeUp, false)
+                    end)
+                    return success2
+                end
+                
+                local clickConn = btn.MouseButton1Click:Connect(function()
+                    PressF()
+                end)
+                AddConnection(clickConn)
+                
+                local enterConn = btn.MouseEnter:Connect(function()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {
+                            BackgroundColor3 = Color3.fromRGB(
+                                math.clamp(themeList.ElementColor.R * 255 + 8, 0, 255),
+                                math.clamp(themeList.ElementColor.G * 255 + 9, 0, 255),
+                                math.clamp(themeList.ElementColor.B * 255 + 10, 0, 255)
+                            )
+                        })
+                        twe:Play()
+                        isHovering = true
+                    end
+                end)
+                AddConnection(enterConn)
+                
+                local leaveConn = btn.MouseLeave:Connect(function()
+                    if not focusing and btn and btn.Parent then
+                        local twe = tween:Create(btn, TweenInfo.new(0.1), {
+                            BackgroundColor3 = themeList.ElementColor
+                        })
+                        twe:Play()
+                        isHovering = false
+                    end
+                end)
+                AddConnection(leaveConn)
+                
+                local function UpdateToggleUITheme()
+                    if not toggleElement or not toggleElement.Parent then return end
+                    if not isHovering then
+                        toggleElement.BackgroundColor3 = themeList.ElementColor
+                    end
+                    if togName then
+                        togName.TextColor3 = themeList.TextColor
+                    end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateToggleUITheme)
+                AddConnection(themeConn)
+                UpdateToggleUITheme()
+                
+                local ToggleUIFunction = {}
+                function ToggleUIFunction:UpdateText(newText)
+                    if togName then
+                        togName.Text = "🔘 " .. newText
+                    end
+                end
+                function ToggleUIFunction:Press()
+                    PressF()
+                end
+                return ToggleUIFunction
+            end
+            
+            function Elements:NewHomeCard(config)
+                config = config or {}
+                local buttons = config.buttons or {}
+                
+                local mainRect = Instance.new("Frame")
+                mainRect.Parent = sectionInners
+                mainRect.BackgroundColor3 = themeList.ElementColor
+                mainRect.BackgroundTransparency = 0.15
+                mainRect.Position = UDim2.new(0, 2, 0, 2)
+                mainRect.Size = UDim2.new(1, -4, 0, 120)
+                mainRect.ClipsDescendants = true
+                
+                local rectCorner = Instance.new("UICorner")
+                rectCorner.CornerRadius = UDim.new(0, 6)
+                rectCorner.Parent = mainRect
+                
+                local avatarSquare = Instance.new("Frame")
+                avatarSquare.Parent = mainRect
+                avatarSquare.Position = UDim2.new(0.03, 0, 0.1, 0)
+                avatarSquare.Size = UDim2.new(0, 80, 0, 80)
+                avatarSquare.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+                avatarSquare.BackgroundTransparency = 0.3
+                
+                local avatarCorner = Instance.new("UICorner")
+                avatarCorner.CornerRadius = UDim.new(0, 6)
+                avatarCorner.Parent = avatarSquare
+                
+                local avatarImage = Instance.new("ImageLabel")
+                avatarImage.Parent = avatarSquare
+                avatarImage.Size = UDim2.new(1, 0, 1, 0)
+                avatarImage.Position = UDim2.new(0, 0, 0, 0)
+                avatarImage.BackgroundTransparency = 1
+                avatarImage.ScaleType = Enum.ScaleType.Fit
+                
+                local userId = game.Players.LocalPlayer.UserId
+                local success, thumb = pcall(function()
+                    return game:GetService("Players"):GetUserThumbnailAsync(
+                        userId,
+                        Enum.ThumbnailType.HeadShot,
+                        Enum.ThumbnailSize.Size150x150
+                    )
+                end)
+                if success and thumb then
+                    avatarImage.Image = thumb
+                else
+                    avatarImage.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+                end
+                
+                local welcomeText = Instance.new("TextLabel")
+                welcomeText.Parent = mainRect
+                welcomeText.BackgroundTransparency = 1
+                welcomeText.Position = UDim2.new(0.28, 0, 0.15, 0)
+                welcomeText.Size = UDim2.new(0, 200, 0, 18)
+                welcomeText.Font = Enum.Font.FredokaOne
+                welcomeText.Text = "Welcome,"
+                welcomeText.TextColor3 = themeList.TextColor
+                welcomeText.TextSize = 14
+                welcomeText.TextXAlignment = Enum.TextXAlignment.Left
+                welcomeText.TextTransparency = 0.5
+                
+                local usernameText = Instance.new("TextLabel")
+                usernameText.Parent = mainRect
+                usernameText.BackgroundTransparency = 1
+                usernameText.Position = UDim2.new(0.28, 0, 0.38, 0)
+                usernameText.Size = UDim2.new(0, 200, 0, 24)
+                usernameText.Font = Enum.Font.FredokaOne
+                usernameText.Text = game.Players.LocalPlayer.Name
+                usernameText.TextColor3 = themeList.SchemeColor
+                usernameText.TextSize = 22
+                usernameText.TextXAlignment = Enum.TextXAlignment.Left
+                
+                local buttonFrame = Instance.new("Frame")
+                buttonFrame.Parent = mainRect
+                buttonFrame.BackgroundTransparency = 1
+                buttonFrame.Position = UDim2.new(0.28, 0, 0.62, 0)
+                buttonFrame.Size = UDim2.new(0, 200, 0, 40)
+                
+                local buttonLayout = Instance.new("UIListLayout")
+                buttonLayout.Parent = buttonFrame
+                buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                buttonLayout.Padding = UDim.new(0, 5)
+                
+                for i, btnData in ipairs(buttons) do
+                    local btn = Instance.new("TextButton")
+                    btn.Parent = buttonFrame
+                    btn.BackgroundColor3 = themeList.SchemeColor
+                    btn.BackgroundTransparency = 0.2
+                    btn.Size = UDim2.new(0, 100, 0, 22)
+                    btn.Font = Enum.Font.FredokaOne
+                    btn.Text = btnData.text or "Button"
+                    btn.TextColor3 = themeList.TextColor
+                    btn.TextSize = 12
+                    btn.AutoButtonColor = false
+                    
+                    local btnCorner = Instance.new("UICorner")
+                    btnCorner.CornerRadius = UDim.new(0, 4)
+                    btnCorner.Parent = btn
+                    
+                    btn.MouseEnter:Connect(function()
+                        tween:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
+                    end)
+                    btn.MouseLeave:Connect(function()
+                        tween:Create(btn, TweenInfo.new(0.15), {BackgroundTransparency = 0.2}):Play()
+                    end)
+                    btn.MouseButton1Click:Connect(btnData.callback or function() end)
+                end
+                
+                local function UpdateHomeTheme()
+                    if not mainRect or not mainRect.Parent then return end
+                    mainRect.BackgroundColor3 = themeList.ElementColor
+                    if welcomeText then welcomeText.TextColor3 = themeList.TextColor end
+                    if usernameText then usernameText.TextColor3 = themeList.SchemeColor end
+                    for _, v in pairs(buttonFrame:GetChildren()) do
+                        if v:IsA("TextButton") then
+                            v.BackgroundColor3 = themeList.SchemeColor
+                            v.TextColor3 = themeList.TextColor
+                        end
+                    end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateHomeTheme)
+                AddConnection(themeConn)
+                UpdateHomeTheme()
+                
+                local HomeFunction = {}
+                function HomeFunction:UpdateUsername(newName)
+                    usernameText.Text = newName or game.Players.LocalPlayer.Name
+                end
+                function HomeFunction:RefreshAvatar()
+                    local newThumb = game:GetService("Players"):GetUserThumbnailAsync(
+                        userId,
+                        Enum.ThumbnailType.HeadShot,
+                        Enum.ThumbnailSize.Size150x150
+                    )
+                    avatarImage.Image = newThumb
+                end
+                return HomeFunction
+            end
+            
+            function Elements:NewConsolePlayer()
+                local consoleFrame = Instance.new("Frame")
+                consoleFrame.Parent = sectionInners
+                consoleFrame.BackgroundColor3 = themeList.Background
+                consoleFrame.BackgroundTransparency = 0.4
+                consoleFrame.Size = UDim2.new(0, 352, 0, 100)
+                consoleFrame.ClipsDescendants = true
+                
+                local consoleCorner = Instance.new("UICorner")
+                consoleCorner.CornerRadius = UDim.new(0, 6)
+                consoleCorner.Parent = consoleFrame
+                
+                local consoleOutput = Instance.new("ScrollingFrame")
+                consoleOutput.Parent = consoleFrame
+                consoleOutput.BackgroundTransparency = 1
+                consoleOutput.Position = UDim2.new(0.02, 0, 0.05, 0)
+                consoleOutput.Size = UDim2.new(0.96, 0, 0.9, 0)
+                consoleOutput.ScrollBarThickness = 3
+                consoleOutput.CanvasSize = UDim2.new(0, 0, 0, 0)
+                consoleOutput.BorderSizePixel = 0
+                
+                local consoleLines = {}
+                local maxLines = 50
+                
+                local function PrintToConsole(message, color)
+                    color = color or themeList.TextColor
+                    local line = Instance.new("TextLabel")
+                    line.Parent = consoleOutput
+                    line.BackgroundTransparency = 1
+                    line.Size = UDim2.new(1, 0, 0, 18)
+                    line.Font = Enum.Font.FredokaOne
+                    line.Text = "> " .. tostring(message)
+                    line.TextColor3 = color
+                    line.TextSize = 11
+                    line.TextXAlignment = Enum.TextXAlignment.Left
+                    line.TextTransparency = 0.8
+                    
+                    table.insert(consoleLines, line)
+                    if #consoleLines > maxLines then
+                        local old = table.remove(consoleLines, 1)
+                        old:Destroy()
+                    end
+                    task.wait(0.01)
+                    local contentSize = consoleOutput.AbsoluteCanvasSize
+                    consoleOutput.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 18)
+                    consoleOutput.ScrollOffset = Vector2.new(0, consoleOutput.AbsoluteCanvasSize.Y)
+                end
+                
+                local function UpdateConsoleTheme()
+                    if not consoleFrame or not consoleFrame.Parent then return end
+                    consoleFrame.BackgroundColor3 = themeList.Background
+                    for _, line in ipairs(consoleLines) do
+                        if line and line.Parent then
+                            line.TextColor3 = themeList.TextColor
+                        end
+                    end
+                end
+                
+                local themeConn = ThemeEvent.Event:Connect(UpdateConsoleTheme)
+                AddConnection(themeConn)
+                UpdateConsoleTheme()
+                
+                PrintToConsole("SpecialUI Sundae v1.0.0 loaded!", themeList.SchemeColor)
+                PrintToConsole("Welcome " .. game.Players.LocalPlayer.Name .. "!", themeList.TextColor)
+                
+                local ConsoleFunction = {}
+                function ConsoleFunction:Print(message, color)
+                    PrintToConsole(message, color or themeList.TextColor)
+                end
+                function ConsoleFunction:Info(message)
+                    PrintToConsole("ℹ️ " .. message, Color3.fromRGB(100, 200, 255))
+                end
+                function ConsoleFunction:Success(message)
+                    PrintToConsole("✅ " .. message, Color3.fromRGB(0, 255, 100))
+                end
+                function ConsoleFunction:Warning(message)
+                    PrintToConsole("⚠️ " .. message, Color3.fromRGB(255, 200, 0))
+                end
+                function ConsoleFunction:Error(message)
+                    PrintToConsole("❌ " .. message, Color3.fromRGB(255, 50, 50))
+                end
+                function ConsoleFunction:Clear()
+                    for _, line in ipairs(consoleLines) do
+                        line:Destroy()
+                    end
+                    consoleLines = {}
+                    consoleOutput.CanvasSize = UDim2.new(0, 0, 0, 0)
+                end
+                function ConsoleFunction:SetMaxLines(newMax)
+                    maxLines = newMax or 50
+                end
+                return ConsoleFunction
+            end
+            
             return Elements
         end
         return Sections
     end
+    
+    function Tabs:NewDropdownTab(tabName, tabInf, options, callback)
+        tabName = tabName or "Dropdown"
+        options = options or {}
+        callback = callback or function() end
+        
+        local mainTab = Tabs:NewTab(tabName)
+        local section = mainTab:NewSection(tabName)
+        local optionPages = {}
+        local currentOption = nil
+        
+        for _, optionName in ipairs(options) do
+            local optionTab = Tabs:NewTab(optionName)
+            optionPages[optionName] = optionTab
+            local page = Pages:FindFirstChild(optionName)
+            if page and page:IsA("ScrollingFrame") then
+                page.Visible = false
+            end
+        end
+        
+        local dropFunc = section:NewDropdown(tabName, tabInf or "Select an option", options, function(selected)
+            for name, tab in pairs(optionPages) do
+                local page = Pages:FindFirstChild(name)
+                if page and page:IsA("ScrollingFrame") then
+                    page.Visible = false
+                end
+            end
+            if optionPages[selected] then
+                local page = Pages:FindFirstChild(selected)
+                if page and page:IsA("ScrollingFrame") then
+                    page.Visible = true
+                end
+            end
+            currentOption = selected
+            callback(selected)
+        end)
+        
+        local SubTabs = {}
+        function SubTabs:GetOption(optionName)
+            return optionPages[optionName]
+        end
+        
+        function SubTabs:NewSectionInOption(optionName, sectionName)
+            local option = optionPages[optionName]
+            if option then
+                return option:NewSection(sectionName or "Main")
+            end
+            return nil
+        end
+        
+        return SubTabs
+    end
+    
     return Tabs
+end
+
+function SpecialUI:Destroy()
+    for _, conn in pairs(ActiveConnections) do
+        if conn and typeof(conn) == "RBXScriptConnection" then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    table.clear(ActiveConnections)
+
+    for instanceId, conns in pairs(DraggingConnections) do
+        for _, conn in ipairs(conns) do
+            if conn and typeof(conn) == "RBXScriptConnection" then
+                pcall(function() conn:Disconnect() end)
+            end
+        end
+    end
+    table.clear(DraggingConnections)
+
+    for i = #ActiveObjects, 1, -1 do
+        local obj = ActiveObjects[i]
+        if obj and typeof(obj) == "Instance" and obj.Parent then
+            pcall(function() obj:Destroy() end)
+        end
+        ActiveObjects[i] = nil
+    end
+    table.clear(ActiveObjects)
+
+    if ThemeEvent then
+        pcall(function() ThemeEvent:Destroy() end)
+        ThemeEvent = nil
+    end
+
+    if MainInstance and MainInstance.Parent then
+        pcall(function() MainInstance:Destroy() end)
+        MainInstance = nil
+    end
+
+    local gui = game.CoreGui:FindFirstChild(LibName)
+    if gui then
+        pcall(function() gui:Destroy() end)
+    end
+
+    Pages = nil
+    tabFrames = nil
+    infoContainer = nil
+    blurFrame = nil
+    themeList = nil
+    LibName = nil
+    CurrentThemeName = "Dark"
+    CurrentThemeTable = nil
 end
 
 return SpecialUI
