@@ -61,8 +61,6 @@ all of the themes:
 local Tab = Window:NewTab("ExampleTab")
 ```
 
-```
-
 ---
 
 # 5: Creating Sections
@@ -238,10 +236,10 @@ Library:SetTheme("Lavender")
 ```
 local console = Section:NewConsolePlayer()
 ```
-
 ---
 
-# 18: ToggleUI 
+## 18: ToggleUI 
+
 ```
 Section:NewToggleUI("Toggle UI", "Click to hide/show the UI")
 
