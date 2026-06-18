@@ -1,4 +1,4 @@
--- SpecialUI v1.0.0 (Sundae)
+-- SpecialUI v1.0.0-Preview1 (Sundae-Preview)
 -- Credits to xHeptc for Kavo UI Lib
 
 local SpecialUI = {}
@@ -1177,6 +1177,11 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local sliderDragCorner = Instance.new("UICorner")
                 local write = Instance.new("ImageLabel")
                 local val = Instance.new("TextLabel")
+                local isDragging = false
+                local moveConnection = nil
+                local releaseConnection = nil
+                local mouse = game.Players.LocalPlayer:GetMouse()
+                local uis = game:GetService("UserInputService")
                 
                 sliderElement.Name = "sliderElement"
                 sliderElement.Parent = sectionInners
@@ -1226,6 +1231,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 sliderBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
                 sliderBtn.TextSize = 14
                 
+                sliderBtnCorner.CornerRadius = UDim.new(0, 4)
                 sliderBtnCorner.Parent = sliderBtn
                 
                 UIListLayout.Parent = sliderBtn
@@ -1237,8 +1243,9 @@ function SpecialUI.CreateLib(kavName, themeName)
                 sliderDrag.BackgroundColor3 = themeList.SchemeColor
                 sliderDrag.BorderColor3 = Color3.fromRGB(74, 99, 135)
                 sliderDrag.BorderSizePixel = 0
-                sliderDrag.Size = UDim2.new(-0.67114, 100, 1, 0)
+                sliderDrag.Size = UDim2.new(0, 100, 1, 0)
                 
+                sliderDragCorner.CornerRadius = UDim.new(0, 4)
                 sliderDragCorner.Parent = sliderDrag
                 
                 write.Name = "write"
@@ -1257,7 +1264,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 val.Position = UDim2.new(0.35239, 0, 0.27273, 0)
                 val.Size = UDim2.new(0, 41, 0, 14)
                 val.Font = Enum.Font.FredokaOne
-                val.Text = minvalue
+                val.Text = tostring(minvalue)
                 val.TextColor3 = themeList.TextColor
                 val.TextSize = 14
                 val.TextTransparency = 1
@@ -1273,6 +1280,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 moreInfo.Size = UDim2.new(0, 353, 0, 33)
                 moreInfo.ZIndex = 9
                 moreInfo.Font = Enum.Font.FredokaOne
+                moreInfo.RichText = true
                 moreInfo.Text = "  " .. slidTip
                 moreInfo.TextColor3 = themeList.TextColor
                 moreInfo.TextSize = 14
@@ -1284,30 +1292,96 @@ function SpecialUI.CreateLib(kavName, themeName)
                 updateSectionFrame()
                 UpdateSize()
                 
-                local mouse = game.Players.LocalPlayer:GetMouse()
-                local uis = game:GetService("UserInputService")
-                local btn = sliderElement
-                local isHovering = false
-                local moveconnection = nil
-                local releaseconnection = nil
+                local function updateSlider(input)
+                    if not sliderDrag or not sliderDrag.Parent then return end
+                    local mouseX = input.Position.X
+                    local btnPos = sliderBtn.AbsolutePosition.X
+                    local newPos = math.clamp(mouseX - btnPos, 0, 149)
+                    local percent = newPos / 149
+                    local value = math.floor(minvalue + (maxvalue - minvalue) * percent)
+                    sliderDrag.Size = UDim2.new(0, newPos, 1, 0)
+                    val.Text = tostring(value)
+                    pcall(callback, value)
+                end
                 
-                local enterConn = btn.MouseEnter:Connect(function()
-                    if not focusing and btn and btn.Parent then
-                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(math.clamp(themeList.ElementColor.R * 255 + 8, 0, 255), math.clamp(themeList.ElementColor.G * 255 + 9, 0, 255), math.clamp(themeList.ElementColor.B * 255 + 10, 0, 255))})
+                local sliderDownConn = sliderBtn.MouseButton1Down:Connect(function(input)
+                    if not focusing then
+                        isDragging = true
+                        val.TextTransparency = 0
+                        updateSlider(input)
+                        
+                        if moveConnection then moveConnection:Disconnect() end
+                        moveConnection = mouse.Move:Connect(function(input)
+                            if isDragging then
+                                updateSlider(input)
+                            end
+                        end)
+                        AddConnection(moveConnection)
+                        
+                        if releaseConnection then releaseConnection:Disconnect() end
+                        releaseConnection = uis.InputEnded:Connect(function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                                isDragging = false
+                                val.TextTransparency = 1
+                                if moveConnection then 
+                                    moveConnection:Disconnect()
+                                    moveConnection = nil
+                                end
+                                if releaseConnection then
+                                    releaseConnection:Disconnect()
+                                    releaseConnection = nil
+                                end
+                            end
+                        end)
+                        AddConnection(releaseConnection)
+                    else
+                        for _, v in pairs(infoContainer:GetChildren()) do
+                            if v and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
+                            focusing = false
+                        end
+                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
+                    end
+                end)
+                AddConnection(sliderDownConn)
+                
+                local isHovering = false
+                
+                local enterConn = sliderElement.MouseEnter:Connect(function()
+                    if not focusing and sliderElement and sliderElement.Parent then
+                        local twe = tween:Create(sliderElement, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(math.clamp(themeList.ElementColor.R * 255 + 8, 0, 255), math.clamp(themeList.ElementColor.G * 255 + 9, 0, 255), math.clamp(themeList.ElementColor.B * 255 + 10, 0, 255))})
                         twe:Play()
                         isHovering = true
                     end
                 end)
                 AddConnection(enterConn)
                 
-                local leaveConn = btn.MouseLeave:Connect(function()
-                    if not focusing and btn and btn.Parent then
-                        local twe = tween:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
+                local leaveConn = sliderElement.MouseLeave:Connect(function()
+                    if not focusing and sliderElement and sliderElement.Parent then
+                        local twe = tween:Create(sliderElement, TweenInfo.new(0.1), {BackgroundColor3 = themeList.ElementColor})
                         twe:Play()
                         isHovering = false
                     end
                 end)
                 AddConnection(leaveConn)
+                
+                local viewConn = viewInfo.MouseButton1Click:Connect(function()
+                    if not viewDe then
+                        viewDe = true
+                        focusing = true
+                        for _, v in pairs(infoContainer:GetChildren()) do
+                            if v and v ~= moreInfo and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
+                        end
+                        if moreInfo and moreInfo.Parent then Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2) end
+                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2) end
+                        if sliderElement and sliderElement.Parent then Utility:TweenObject(sliderElement, {BackgroundColor3 = themeList.ElementColor}, 0.2) end
+                        task.wait(1.5)
+                        focusing = false
+                        if moreInfo and moreInfo.Parent then Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
+                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
+                        viewDe = false
+                    end
+                end)
+                AddConnection(viewConn)
                 
                 local function UpdateSliderTheme()
                     if not sliderElement or not sliderElement.Parent then return end
@@ -1329,63 +1403,6 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local themeConn = ThemeEvent.Event:Connect(UpdateSliderTheme)
                 AddConnection(themeConn)
                 UpdateSliderTheme()
-                
-                local Value
-                local sliderDownConn = sliderBtn.MouseButton1Down:Connect(function()
-                    if not focusing then
-                        local twe = tween:Create(val, TweenInfo.new(0.1), {TextTransparency = 0})
-                        twe:Play()
-                        Value = math.floor((((maxvalue - minvalue) / 149) * sliderDrag.AbsoluteSize.X) + minvalue)
-                        pcall(callback, Value)
-                        sliderDrag:TweenSize(UDim2.new(0, math.clamp(mouse.X - sliderDrag.AbsolutePosition.X, 0, 149), 0, 6), "InOut", "Linear", 0.05, true)
-                        moveconnection = mouse.Move:Connect(function()
-                            val.Text = Value
-                            Value = math.floor((((maxvalue - minvalue) / 149) * sliderDrag.AbsoluteSize.X) + minvalue)
-                            pcall(callback, Value)
-                            sliderDrag:TweenSize(UDim2.new(0, math.clamp(mouse.X - sliderDrag.AbsolutePosition.X, 0, 149), 0, 6), "InOut", "Linear", 0.05, true)
-                        end)
-                        AddConnection(moveconnection)
-                        releaseconnection = uis.InputEnded:Connect(function(input)
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                Value = math.floor((((maxvalue - minvalue) / 149) * sliderDrag.AbsoluteSize.X) + minvalue)
-                                pcall(callback, Value)
-                                val.Text = Value
-                                local twe2 = tween:Create(val, TweenInfo.new(0.1), {TextTransparency = 1})
-                                twe2:Play()
-                                sliderDrag:TweenSize(UDim2.new(0, math.clamp(mouse.X - sliderDrag.AbsolutePosition.X, 0, 149), 0, 6), "InOut", "Linear", 0.05, true)
-                                if moveconnection then moveconnection:Disconnect() end
-                                if releaseconnection then releaseconnection:Disconnect() end
-                            end
-                        end)
-                        AddConnection(releaseconnection)
-                    else
-                        for _, v in pairs(infoContainer:GetChildren()) do
-                            if v and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
-                            focusing = false
-                        end
-                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
-                    end
-                end)
-                AddConnection(sliderDownConn)
-                
-                local viewConn = viewInfo.MouseButton1Click:Connect(function()
-                    if not viewDe then
-                        viewDe = true
-                        focusing = true
-                        for _, v in pairs(infoContainer:GetChildren()) do
-                            if v and v ~= moreInfo and v.Parent then Utility:TweenObject(v, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
-                        end
-                        if moreInfo and moreInfo.Parent then Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 0, 0)}, 0.2) end
-                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 0.5}, 0.2) end
-                        if btn and btn.Parent then Utility:TweenObject(btn, {BackgroundColor3 = themeList.ElementColor}, 0.2) end
-                        task.wait(1.5)
-                        focusing = false
-                        if moreInfo and moreInfo.Parent then Utility:TweenObject(moreInfo, {Position = UDim2.new(0, 0, 2, 0)}, 0.2) end
-                        if blurFrame and blurFrame.Parent then Utility:TweenObject(blurFrame, {BackgroundTransparency = 1}, 0.2) end
-                        viewDe = false
-                    end
-                end)
-                AddConnection(viewConn)
                 
                 local SliderFunction = {}
                 return SliderFunction
@@ -2637,8 +2654,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                     if not isHovering then
                         toggleElement.BackgroundColor3 = themeList.ElementColor
                     end
-                    if togName then
-                        togName.TextColor3 = themeList.TextColor
+                    if togName then                        togName.TextColor3 = themeList.TextColor
                     end
                 end
                 
@@ -2661,28 +2677,29 @@ function SpecialUI.CreateLib(kavName, themeName)
             function Elements:NewHomeCard(config)
                 config = config or {}
                 local buttons = config.buttons or {}
+                local numButtons = #buttons
                 
                 local mainRect = Instance.new("Frame")
                 mainRect.Parent = sectionInners
                 mainRect.BackgroundColor3 = themeList.ElementColor
                 mainRect.BackgroundTransparency = 0.15
                 mainRect.Position = UDim2.new(0, 2, 0, 2)
-                mainRect.Size = UDim2.new(1, -4, 0, 120)
+                mainRect.Size = UDim2.new(1, -4, 0, 150)
                 mainRect.ClipsDescendants = true
                 
                 local rectCorner = Instance.new("UICorner")
-                rectCorner.CornerRadius = UDim.new(0, 6)
+                rectCorner.CornerRadius = UDim.new(0, 8)
                 rectCorner.Parent = mainRect
                 
                 local avatarSquare = Instance.new("Frame")
                 avatarSquare.Parent = mainRect
                 avatarSquare.Position = UDim2.new(0.03, 0, 0.1, 0)
-                avatarSquare.Size = UDim2.new(0, 80, 0, 80)
+                avatarSquare.Size = UDim2.new(0, 90, 0, 90)
                 avatarSquare.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
                 avatarSquare.BackgroundTransparency = 0.3
                 
                 local avatarCorner = Instance.new("UICorner")
-                avatarCorner.CornerRadius = UDim.new(0, 6)
+                avatarCorner.CornerRadius = UDim.new(1, 0)
                 avatarCorner.Parent = avatarSquare
                 
                 local avatarImage = Instance.new("ImageLabel")
@@ -2709,7 +2726,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local welcomeText = Instance.new("TextLabel")
                 welcomeText.Parent = mainRect
                 welcomeText.BackgroundTransparency = 1
-                welcomeText.Position = UDim2.new(0.28, 0, 0.15, 0)
+                welcomeText.Position = UDim2.new(0.28, 0, 0.08, 0)
                 welcomeText.Size = UDim2.new(0, 200, 0, 18)
                 welcomeText.Font = Enum.Font.FredokaOne
                 welcomeText.Text = "Welcome,"
@@ -2721,31 +2738,52 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local usernameText = Instance.new("TextLabel")
                 usernameText.Parent = mainRect
                 usernameText.BackgroundTransparency = 1
-                usernameText.Position = UDim2.new(0.28, 0, 0.38, 0)
-                usernameText.Size = UDim2.new(0, 200, 0, 24)
+                usernameText.Position = UDim2.new(0.28, 0, 0.28, 0)
+                usernameText.Size = UDim2.new(0, 200, 0, 26)
                 usernameText.Font = Enum.Font.FredokaOne
                 usernameText.Text = game.Players.LocalPlayer.Name
                 usernameText.TextColor3 = themeList.SchemeColor
-                usernameText.TextSize = 22
+                usernameText.TextSize = 24
                 usernameText.TextXAlignment = Enum.TextXAlignment.Left
                 
                 local buttonFrame = Instance.new("Frame")
                 buttonFrame.Parent = mainRect
                 buttonFrame.BackgroundTransparency = 1
-                buttonFrame.Position = UDim2.new(0.28, 0, 0.62, 0)
-                buttonFrame.Size = UDim2.new(0, 200, 0, 40)
+                
+                if numButtons == 1 then
+                    buttonFrame.Position = UDim2.new(0.28, 0, 0.62, 0)
+                    buttonFrame.Size = UDim2.new(0, 120, 0, 30)
+                elseif numButtons >= 2 then
+                    buttonFrame.Position = UDim2.new(0.28, 0, 0.60, 0)
+                    buttonFrame.Size = UDim2.new(0, 210, 0, 30)
+                    welcomeText.TextSize = 12
+                    welcomeText.Position = UDim2.new(0.28, 0, 0.06, 0)
+                    usernameText.TextSize = 20
+                    usernameText.Position = UDim2.new(0.28, 0, 0.24, 0)
+                else
+                    buttonFrame.Position = UDim2.new(0.28, 0, 0.62, 0)
+                    buttonFrame.Size = UDim2.new(0, 120, 0, 30)
+                end
                 
                 local buttonLayout = Instance.new("UIListLayout")
                 buttonLayout.Parent = buttonFrame
                 buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
-                buttonLayout.Padding = UDim.new(0, 5)
+                buttonLayout.FillDirection = Enum.FillDirection.Horizontal
+                buttonLayout.Padding = UDim.new(0, 10)
+                buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
                 
                 for i, btnData in ipairs(buttons) do
                     local btn = Instance.new("TextButton")
                     btn.Parent = buttonFrame
                     btn.BackgroundColor3 = themeList.SchemeColor
                     btn.BackgroundTransparency = 0.2
-                    btn.Size = UDim2.new(0, 100, 0, 22)
+                    
+                    if numButtons == 1 then
+                        btn.Size = UDim2.new(0, 120, 0, 28)
+                    else
+                        btn.Size = UDim2.new(0, 100, 0, 28)
+                    end
+                    
                     btn.Font = Enum.Font.FredokaOne
                     btn.Text = btnData.text or "Button"
                     btn.TextColor3 = themeList.TextColor
@@ -2753,7 +2791,7 @@ function SpecialUI.CreateLib(kavName, themeName)
                     btn.AutoButtonColor = false
                     
                     local btnCorner = Instance.new("UICorner")
-                    btnCorner.CornerRadius = UDim.new(0, 4)
+                    btnCorner.CornerRadius = UDim.new(0, 6)
                     btnCorner.Parent = btn
                     
                     btn.MouseEnter:Connect(function()
@@ -2801,8 +2839,8 @@ function SpecialUI.CreateLib(kavName, themeName)
                 local consoleFrame = Instance.new("Frame")
                 consoleFrame.Parent = sectionInners
                 consoleFrame.BackgroundColor3 = themeList.Background
-                consoleFrame.BackgroundTransparency = 0.4
-                consoleFrame.Size = UDim2.new(0, 352, 0, 100)
+                consoleFrame.BackgroundTransparency = 0.8
+                consoleFrame.Size = UDim2.new(0, 352, 0, 120)
                 consoleFrame.ClipsDescendants = true
                 
                 local consoleCorner = Instance.new("UICorner")
@@ -2840,9 +2878,9 @@ function SpecialUI.CreateLib(kavName, themeName)
                         old:Destroy()
                     end
                     task.wait(0.01)
-                    local contentSize = consoleOutput.AbsoluteCanvasSize
-                    consoleOutput.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 18)
-                    consoleOutput.ScrollOffset = Vector2.new(0, consoleOutput.AbsoluteCanvasSize.Y)
+                    local totalHeight = #consoleLines * 18
+                    consoleOutput.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+                    consoleOutput.ScrollOffset = Vector2.new(0, totalHeight)
                 end
                 
                 local function UpdateConsoleTheme()
