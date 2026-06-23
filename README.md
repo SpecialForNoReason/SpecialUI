@@ -2,7 +2,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2)](https://discord.gg/yvGpvEAVrn)
 
 
-## 🍨SpecialUI Sundae (v1.0.0)🍨
+## 🍨SpecialUI Sundae.1 (v1.0.1)🍨
 
 
 ## important notice
@@ -52,6 +52,9 @@ all of the themes:
 | **Amber** | Orange/warm |
 | **Ice** | Kewl Blue/Cyan |
 | **Fire** | Bright Orange/Red |
+| **Loud** | Cyan/aqua, fresh vibe |
+| **Deep** | Ass Blue |
+| **Sick** | Neon green, aggressive |
 *Note: Dark, Light, Grape and Blood had the 'Theme' Suffix removed from the original Kavo UI*
 
 ---
