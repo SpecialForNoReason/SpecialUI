@@ -38,7 +38,10 @@ local ThemeStyles = {
     Forest = { SchemeColor = Color3.fromRGB(34, 139, 34), Background = Color3.fromRGB(20, 30, 20), Header = Color3.fromRGB(15, 25, 15), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(25, 35, 25) },
     Amber = { SchemeColor = Color3.fromRGB(255, 126, 0), Background = Color3.fromRGB(25, 20, 15), Header = Color3.fromRGB(20, 15, 10), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 25, 20) },
     Ice = { SchemeColor = Color3.fromRGB(0, 200, 255), Background = Color3.fromRGB(20, 25, 35), Header = Color3.fromRGB(15, 20, 30), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(30, 40, 55) },
-    Fire = { SchemeColor = Color3.fromRGB(255, 80, 0), Background = Color3.fromRGB(35, 15, 10), Header = Color3.fromRGB(25, 10, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 25, 15) }
+    Fire = { SchemeColor = Color3.fromRGB(255, 80, 0), Background = Color3.fromRGB(35, 15, 10), Header = Color3.fromRGB(25, 10, 5), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(45, 25, 15) },
+    Loud = { SchemeColor = Color3.fromRGB(143, 227, 235), Background = Color3.fromRGB(83, 140, 145), Header = Color3.fromRGB(66, 195, 207), TextColor = Color3.fromRGB(255,255,255), ElementColor = Color3.fromRGB(72, 96, 102) },
+    Deep = { SchemeColor = Color3.fromRGB(96, 120, 179), Background = Color3.fromRGB(32, 48, 87), Header = Color3.fromRGB(1, 24, 84), TextColor = Color3.fromRGB(207, 220, 255), ElementColor = Color3.fromRGB(86, 126, 227) },
+    Sick = { SchemeColor = Color3.fromRGB(17, 255, 13), Background = Color3.fromRGB(74, 74, 72), Header = Color3.fromRGB(41, 41, 40), TextColor = Color3.fromRGB(255, 255, 255), ElementColor = Color3.fromRGB(41, 41, 40) }
 }
 
 local themeList = table.clone(ThemeStyles.Dark)
