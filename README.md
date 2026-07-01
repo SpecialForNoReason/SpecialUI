@@ -2,7 +2,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2)](https://discord.gg/yvGpvEAVrn)
 
 
-## 🍨SpecialUI Sundae.1 (v1.0.1)🍨
+## 🍰SpecialUI Cheesecake (v1.1.0)🍰
 
 
 ## important notice
@@ -55,6 +55,8 @@ all of the themes:
 | **Loud** | Cyan/aqua, fresh vibe |
 | **Deep** | Ass Blue |
 | **Sick** | Neon green, aggressive |
+| **mint** | Calm Lime |
+| **Terminal** | even more ass blue |
 *Note: Dark, Light, Grape and Blood had the 'Theme' Suffix removed from the original Kavo UI*
 
 ---
@@ -183,7 +185,15 @@ end)
 
 ---
 
-# 14: Creating Color Pickers
+# 14: Notifications (NEW!)
+```
+Library:Notify("Hello World!", 3)  
+Library:Notify("Short notification") 
+```
+
+---
+
+# 15: Creating Color Pickers
 ```
 Section:NewColorPicker("Color Text", "Color Info", Color3.fromRGB(255, 0, 0), function(color)
     print(color)
@@ -192,7 +202,7 @@ end)
 
 ---
 
-## 15: Applying Custom themes
+## 16: Applying Custom themes
 ```
 local MyTheme = {
     SchemeColor = Color3.fromRGB(255, 100, 100),
@@ -209,7 +219,7 @@ local Window = Library.CreateLib("Example", MyTheme)
 
 ---
 
-# 16: Theme Management
+# 17: Theme Management
 this one's pretty confusing, therefore ill explain it here
 you can change Themes, preset2preset, preset2custom, custom2custom & custom2preset
 if its preset2preset then:
@@ -235,20 +245,20 @@ Library:SetTheme("Lavender")
 
 ---
 
-# 17: Console (useless but new and kewl)
+# 18: Console (useless but new and kewl)
 ```
-local console = Section:NewConsolePlayer()
+local console = Section:NewConsolePlayer()       
+local console = Section:NewConsolePlayer(true)    
 ```
----
-
-## 18: ToggleUI 
-
+if you want, you can print things, like this:
 ```
-Section:NewToggleUI("Toggle UI", "Click to hide/show the UI")
-
-local toggleUI = Section:NewToggleUI("Hide UI", "Click me")
-toggleUI:UpdateText("Show UI")
-toggleUI:Press()
+console:Print("Hello!")
+console:Success("It worked!")
+console:Warning("Be careful!")
+console:Error("Something broke!")
+console:Info("FYI...")
+console:Clear()
+console:SetMaxLines(100)
 ```
 
 ---
@@ -256,6 +266,107 @@ toggleUI:Press()
 # 19: Destroy UI
 ```
 Library.DestroyUI()
+```
+
+----------------------------------
+
+## Sub-API
+**The Sub-API allows you to create and register your own custom UI elements that behave like native SpecialUI elements.**
+# RegisterElement
+```
+SpecialUI:RegisterElement("ElementName", function(sectionInners, themeList, ThemeEvent, AddConnection, UpdateSize, updateSectionFrame, ...)
+    -- Your custom element code here
+    -- Must return a table with your element's methods
+end)
+```
+| Parameters | Description |
+|-------|---------|
+| **sectionInners** | the frame where you element should be parented |
+| **themeList** | Current theme colors table (SchemeColor, Background, Header, TextColor, ElementColor) |
+| **ThemeEvent** | BindableEvent that fires when theme changes, connect to it for theme updates |
+| **AddConnection** | Function to add Connection for Proper Cleanup |
+| **UpdateSize** | Function to update parent Section Size |
+| **updateSectionFrame** | Function to update section frame size |
+| **config** | Configuration table passed when creating the element |
+| **Returns** | A table containing your element's methods |
+
+# RegisterExtension
+```
+SpecialUI:RegisterExtension("FunctionName", function(...)
+    -- Your custom function code here
+end)
+```
+Adds new global functions directly to the SpecialUI API.
+*example*:
+```
+SpecialUI:RegisterExtension("MyFunction", function()
+    print("Hello World!")
+end)
+
+-- Usage:
+SpecialUI:MyFunction() -- Prints "Hello World!"
+```
+# Custom Element Example: ProgressBar
+# Registering:
+```
+Library:RegisterElement("NewProgressBar", function(parent, themeList, ThemeEvent, AddConnection, UpdateSize, updateSectionFrame, config)
+    config = config or {}
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.BackgroundColor3 = themeList.ElementColor
+    frame.Size = UDim2.new(0, 352, 0, 33)
+    frame.ClipsDescendants = true
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 4)
+    
+    local bar = Instance.new("Frame")
+    bar.Parent = frame
+    bar.BackgroundColor3 = themeList.SchemeColor
+    bar.Size = UDim2.new((config.progress or 0) / 100, 0, 1, 0)
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 4)
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Font = Enum.Font.FredokaOne
+    label.Text = tostring(config.progress or 0) .. "%"
+    label.TextColor3 = themeList.TextColor
+    label.TextSize = 14
+    
+    AddConnection(ThemeEvent.Event:Connect(function()
+        frame.BackgroundColor3 = themeList.ElementColor
+        bar.BackgroundColor3 = themeList.SchemeColor
+        label.TextColor3 = themeList.TextColor
+    end))
+    
+    updateSectionFrame()
+    UpdateSize()
+    
+    return {
+        SetProgress = function(_, v)
+            v = math.clamp(v, 0, 100)
+            bar:TweenSize(UDim2.new(v / 100, 0, 1, 0), "InOut", "Quad", 0.3)
+            label.Text = v .. "%"
+        end
+    }
+end)
+```
+# Using:
+```
+local bar = Section:NewProgressBar({progress = 0})
+
+Section:NewButton("25%", "", function()
+    bar:SetProgress(25)
+end)
+
+Section:NewButton("50%", "", function()
+    bar:SetProgress(50)
+end)
+
+Section:NewButton("100%", "", function()
+    bar:SetProgress(100)
+end)
 ```
 
 ---
